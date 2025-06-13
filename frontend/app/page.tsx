@@ -21,7 +21,6 @@ import {
 import Image from "next/image";
 import Link from "next/link";
 import { NAVBAR_LINKS } from "@/lib/constants";
-import { NavBar } from "@/components/header";
 
 export default function Home() {
   return (
@@ -235,65 +234,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Testimonials */}
-        <section className="container mx-auto py-16">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Success Stories
-            </h2>
-            <p className="text-gray-600 max-w-2xl mx-auto">
-              Hear from students whose academic journeys were transformed by
-              University of Guelph awards.
-            </p>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {[
-              {
-                name: "Sarah Johnson",
-                program: "Environmental Sciences",
-                award: "President's Scholarship",
-                quote:
-                  "The President's Scholarship didn't just help me financially—it opened doors to research opportunities and connections that shaped my career path.",
-                image: "/placeholder.svg?height=100&width=100&text=SJ",
-              },
-              {
-                name: "Michael Chen",
-                program: "Computer Science",
-                award: "Innovation Research Grant",
-                quote:
-                  "Receiving the Innovation Research Grant allowed me to pursue my passion project in AI, which has now evolved into a startup with real-world impact.",
-                image: "/placeholder.svg?height=100&width=100&text=MC",
-              },
-            ].map((testimonial, index) => (
-              <div
-                key={index}
-                className="bg-white p-6 rounded-xl shadow-sm border border-[#D8D8D8]/40 flex flex-col md:flex-row gap-6"
-              >
-                <div className="flex-shrink-0">
-                  <div className="w-20 h-20 rounded-full overflow-hidden relative">
-                    <Image
-                      src={testimonial.image || "/placeholder.svg"}
-                      alt={testimonial.name}
-                      fill
-                      className="object-cover"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <p className="text-gray-600 italic mb-4">
-                    "{testimonial.quote}"
-                  </p>
-                  <div>
-                    <h4 className="font-semibold">{testimonial.name}</h4>
-                    <p className="text-sm text-gray-500">
-                      {testimonial.program} | {testimonial.award} Recipient
-                    </p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
 
         {/* Upcoming Deadlines */}
         <section className="bg-[#000000] text-white py-16">
