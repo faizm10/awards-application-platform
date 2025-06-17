@@ -243,7 +243,7 @@ export default function Home() {
                 Upcoming Deadlines
               </h2>
               <p className="text-gray-300 max-w-2xl mx-auto">
-                Don't miss these important dates for award applications. Mark
+                Don&apos;t miss these important dates for award applications. Mark
                 your calendar and apply early!
               </p>
             </div>
