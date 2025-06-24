@@ -1,25 +1,39 @@
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { Trophy, Calendar, DollarSign, Users, ArrowLeft, Mail, FileText, CheckCircle } from "lucide-react"
-import { awards } from "@/lib/awards"
-import { notFound } from "next/navigation"
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import {
+  Trophy,
+  Calendar,
+  DollarSign,
+  Users,
+  ArrowLeft,
+  Mail,
+  FileText,
+  CheckCircle,
+} from "lucide-react";
+import { awards } from "@/lib/awards";
+import { notFound } from "next/navigation";
 
-interface AwardDetailPageProps {
-  params: {
-    id: string
-  }
-}
 
-export default function AwardDetailPage({ params }: AwardDetailPageProps) {
-  const award = awards.find((a) => a.id === params.id)
+export default async function Page({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const award = awards.find((a) => a.id === id);
 
   if (!award) {
-    notFound()
+    notFound();
   }
-
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -35,7 +49,9 @@ export default function AwardDetailPage({ params }: AwardDetailPageProps) {
               </Button>
               <div className="flex items-center space-x-2">
                 <Trophy className="h-8 w-8 text-blue-600" />
-                <h1 className="text-2xl font-bold text-gray-900">Award Details</h1>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  Award Details
+                </h1>
               </div>
             </div>
           </div>
@@ -52,9 +68,13 @@ export default function AwardDetailPage({ params }: AwardDetailPageProps) {
                   <CardTitle className="text-3xl">{award.title}</CardTitle>
                   <Badge variant="secondary">{award.code}</Badge>
                 </div>
-                <CardDescription className="text-lg">Donor: {award.donor}</CardDescription>
+                <CardDescription className="text-lg">
+                  Donor: {award.donor}
+                </CardDescription>
               </div>
-              <Badge className="bg-blue-100 text-blue-800 text-sm px-3 py-1">{award.category}</Badge>
+              <Badge className="bg-blue-100 text-blue-800 text-sm px-3 py-1">
+                {award.category}
+              </Badge>
             </div>
           </CardHeader>
         </Card>
@@ -98,7 +118,9 @@ export default function AwardDetailPage({ params }: AwardDetailPageProps) {
                 <div>
                   <p className="text-sm text-gray-600">Eligibility</p>
                   <p className="font-semibold">
-                    {award.citizenship.includes("Non-Canadian-PR-PP") ? "All Students" : "Canadian/PR Only"}
+                    {award.citizenship.includes("Non-Canadian-PR-PP")
+                      ? "All Students"
+                      : "Canadian/PR Only"}
                   </p>
                 </div>
               </div>
@@ -137,7 +159,9 @@ export default function AwardDetailPage({ params }: AwardDetailPageProps) {
               <div className="flex gap-2">
                 {award.citizenship.map((citizenship) => (
                   <Badge key={citizenship} variant="outline">
-                    {citizenship === "Canadian-PR-PP" ? "Canadian/Permanent Resident" : "International Students"}
+                    {citizenship === "Canadian-PR-PP"
+                      ? "Canadian/Permanent Resident"
+                      : "International Students"}
                   </Badge>
                 ))}
               </div>
@@ -177,5 +201,5 @@ export default function AwardDetailPage({ params }: AwardDetailPageProps) {
         </div>
       </div>
     </div>
-  )
+  );
 }
