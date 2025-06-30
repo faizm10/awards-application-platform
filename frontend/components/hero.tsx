@@ -7,7 +7,7 @@ import Link from "next/link";
 export function Hero() {
   return (
     <div className="flex flex-col gap-16 items-center">
-      {/* Tech Stack Showcase */}
+      
       <div className="flex gap-8 justify-center items-center animate-bounce-in">
         <a
           href="https://supabase.com/?utm_source=create-next-app&utm_medium=template&utm_term=nextjs"
@@ -15,18 +15,18 @@ export function Hero() {
           rel="noreferrer"
           className="group hover:scale-110 transition-transform duration-300"
         >
-          <div className="p-4 rounded-full bg-gradient-to-r from-green-500/20 to-blue-500/20 group-hover:from-green-500/30 group-hover:to-blue-500/30 transition-all duration-300">
+          <div className="p-4 rounded-full bg-gradient-to-r from-primary/20 to-chart-2/20 group-hover:from-primary/30 group-hover:to-chart-2/30 transition-all duration-300">
             <SupabaseLogo />
           </div>
         </a>
-        <div className="w-px h-12 bg-gradient-to-b from-transparent via-green-500/50 to-transparent"></div>
+        <div className="w-px h-12 bg-gradient-to-b from-transparent via-primary/50 to-transparent"></div>
         <a 
           href="https://nextjs.org/" 
           target="_blank" 
           rel="noreferrer"
           className="group hover:scale-110 transition-transform duration-300"
         >
-          <div className="p-4 rounded-full bg-gradient-to-r from-green-500/20 to-blue-500/20 group-hover:from-green-500/30 group-hover:to-blue-500/30 transition-all duration-300">
+          <div className="p-4 rounded-full bg-gradient-to-r from-primary/20 to-chart-2/20 group-hover:from-primary/30 group-hover:to-chart-2/30 transition-all duration-300">
             <NextLogo />
           </div>
         </a>
@@ -55,8 +55,8 @@ export function Hero() {
           ].map((feature, index) => (
             <div key={index} className="card-modern p-6 text-center group animate-slide-in-up" style={{ animationDelay: `${index * 0.2}s` }}>
               <div className="flex justify-center mb-4">
-                <div className="p-3 rounded-full bg-gradient-to-r from-green-500/20 to-blue-500/20 group-hover:scale-110 transition-transform duration-300">
-                  <feature.icon className="h-6 w-6 text-green-600" />
+                <div className="p-3 rounded-full bg-gradient-to-r from-primary/20 to-chart-2/20 group-hover:scale-110 transition-transform duration-300">
+                  <feature.icon className="h-6 w-6 text-primary" />
                 </div>
               </div>
               <h3 className="font-bold text-lg mb-2">{feature.title}</h3>

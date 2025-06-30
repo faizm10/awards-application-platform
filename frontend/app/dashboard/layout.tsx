@@ -17,8 +17,8 @@ export default function dashboardLayout({
 
       <div className="flex-1 w-full flex flex-col items-center relative z-10">
         {/* Modern navbar */}
-        <nav className="w-full flex justify-center h-20 relative">
-          <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 to-blue-500/10 backdrop-blur-sm"></div>
+        <nav className="w-full flex justify-center h-24 relative">
+          <div className="absolute inset-0 bg-gradient-to-r from-primary/10 to-chart-2/10 backdrop-blur-sm"></div>
           <div className="relative w-full max-w-7xl flex justify-between items-center p-6 px-8">
             <div className="flex gap-8 items-center">
               <Link 
@@ -30,42 +30,42 @@ export default function dashboardLayout({
               <div className="hidden md:flex items-center gap-6">
                 <Link 
                   href="/dashboard" 
-                  className="flex items-center gap-2 text-foreground hover:text-green-600 transition-colors font-medium"
+                  className="flex items-center gap-2 text-foreground hover:text-primary transition-colors font-medium"
                 >
                   <Home className="h-4 w-4" />
                   Dashboard
                 </Link>
                 <Link 
                   href="/awards" 
-                  className="flex items-center gap-2 text-foreground hover:text-green-600 transition-colors font-medium"
+                  className="flex items-center gap-2 text-foreground hover:text-primary transition-colors font-medium"
                 >
                   <Award className="h-4 w-4" />
                   Awards
                 </Link>
                 <Link 
                   href="/search" 
-                  className="flex items-center gap-2 text-foreground hover:text-green-600 transition-colors font-medium"
+                  className="flex items-center gap-2 text-foreground hover:text-primary transition-colors font-medium"
                 >
                   <Search className="h-4 w-4" />
                   Search
                 </Link>
                 <Link 
                   href="/applications" 
-                  className="flex items-center gap-2 text-foreground hover:text-green-600 transition-colors font-medium"
+                  className="flex items-center gap-2 text-foreground hover:text-primary transition-colors font-medium"
                 >
                   <BookOpen className="h-4 w-4" />
                   Applications
                 </Link>
                 <Link 
                   href="/profile" 
-                  className="flex items-center gap-2 text-foreground hover:text-green-600 transition-colors font-medium"
+                  className="flex items-center gap-2 text-foreground hover:text-primary transition-colors font-medium"
                 >
                   <User className="h-4 w-4" />
                   Profile
                 </Link>
                 <Link 
                   href="/settings" 
-                  className="flex items-center gap-2 text-foreground hover:text-green-600 transition-colors font-medium"
+                  className="flex items-center gap-2 text-foreground hover:text-primary transition-colors font-medium"
                 >
                   <Settings className="h-4 w-4" />
                   Settings

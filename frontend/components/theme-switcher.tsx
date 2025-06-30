@@ -57,7 +57,7 @@ const ThemeSwitcher = () => {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent 
-        className="card-modern border-2"
+        className="card-modern border"
         align="start"
       >
         <DropdownMenuRadioGroup
@@ -65,21 +65,21 @@ const ThemeSwitcher = () => {
           onValueChange={(e) => setTheme(e)}
         >
           <DropdownMenuRadioItem 
-            className="flex gap-2 text-foreground hover:bg-green-50 focus:bg-green-50" 
+            className="flex gap-2 text-foreground hover:bg-accent focus:bg-accent" 
             value="light"
           >
             <Sun size={ICON_SIZE} className="text-foreground" />
             <span>Light</span>
           </DropdownMenuRadioItem>
           <DropdownMenuRadioItem 
-            className="flex gap-2 text-foreground hover:bg-green-50 focus:bg-green-50" 
+            className="flex gap-2 text-foreground hover:bg-accent focus:bg-accent" 
             value="dark"
           >
             <Moon size={ICON_SIZE} className="text-foreground" />
             <span>Dark</span>
           </DropdownMenuRadioItem>
           <DropdownMenuRadioItem 
-            className="flex gap-2 text-foreground hover:bg-green-50 focus:bg-green-50" 
+            className="flex gap-2 text-foreground hover:bg-accent focus:bg-accent" 
             value="system"
           >
             <Laptop size={ICON_SIZE} className="text-foreground" />

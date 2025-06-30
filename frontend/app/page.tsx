@@ -1,36 +1,24 @@
-import { AuthButton } from "@/components/auth-button";
-import { Hero } from "@/components/hero";
-import { ThemeSwitcher } from "@/components/theme-switcher";
-import Link from "next/link";
-import { Award, Users, TrendingUp, Zap, ArrowRight, Star, Hexagon } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
+import Link from "next/link";
+import {
+  Award,
+  Users,
+  TrendingUp,
+  Zap,
+  ArrowRight,
+  Star,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { NavbarDemo } from "../components/womp";
 export default function Home() {
+
   return (
     <main className="min-h-screen geometric-bg">
-
       <div className="relative z-10">
-
-        <header className="relative">
-          {/* <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 to-blue-500/10 backdrop-blur-sm"></div> */}
-          <nav className="relative max-w-7xl mx-auto px-6 py-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-4">
-                <div className="hexagon neon-glow"></div>
-                <Link href="/" className="text-2xl font-bold gradient-text">
-                  AwardFlow
-                </Link>
-              </div>
-              <div className="flex items-center space-x-4">
-                <AuthButton />
-                {/* <ThemeSwitcher /> */}
-              </div>
-            </div>
-          </nav>
-        </header>
-
-        {/* Hero Section */}
-        <section className="relative py-20">
+      <section className="relative py-20 ">
+      <NavbarDemo /></section>
+        
+        <section className="relative py-20 ">
           <div className="max-w-7xl mx-auto px-6">
             <div className="grid lg:grid-cols-2 gap-12 items-center">
               {/* Left Content */}
@@ -42,18 +30,28 @@ export default function Home() {
                     <span className="gradient-text">Potential</span>
                   </h1>
                   <p className="text-xl text-muted-foreground max-w-lg">
-                    Discover and apply for scholarships, grants, and awards with our intelligent matching platform.
+                    Discover and apply for scholarships, grants, and awards with
+                    our intelligent matching platform.
                   </p>
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-4">
-                  <Button asChild size="lg" className="btn-primary text-lg px-8 py-4">
+                  <Button
+                    asChild
+                    size="lg"
+                    className="btn-primary text-lg px-8 py-4"
+                  >
                     <Link href="/awards" className="flex items-center gap-2">
                       Start Exploring
                       <ArrowRight className="h-5 w-5" />
                     </Link>
                   </Button>
-                  <Button asChild size="lg" variant="outline" className="btn-secondary text-lg px-8 py-4">
+                  <Button
+                    asChild
+                    size="lg"
+                    variant="outline"
+                    className="btn-secondary text-lg px-8 py-4"
+                  >
                     <Link href="/dashboard">View Dashboard</Link>
                   </Button>
                 </div>
@@ -63,16 +61,24 @@ export default function Home() {
                   {[
                     { icon: Award, value: "10K+", label: "Awards" },
                     { icon: Users, value: "50K+", label: "Students" },
-                    { icon: TrendingUp, value: "$100M+", label: "Distributed" }
+                    { icon: TrendingUp, value: "$100M+", label: "Distributed" },
                   ].map((stat, index) => (
-                    <div key={index} className="text-center animate-bounce-in" style={{ animationDelay: `${index * 0.2}s` }}>
+                    <div
+                      key={index}
+                      className="text-center animate-bounce-in"
+                      style={{ animationDelay: `${index * 0.2}s` }}
+                    >
                       <div className="flex justify-center mb-2">
-                        <div className="p-3 rounded-full bg-gradient-to-r from-green-500/20 to-blue-500/20">
-                          <stat.icon className="h-6 w-6 text-green-600" />
+                        <div className="p-3 rounded-full bg-gradient-to-r from-primary/20 to-chart-2/20">
+                          <stat.icon className="h-6 w-6 text-primary" />
                         </div>
                       </div>
-                      <div className="text-2xl font-bold gradient-text">{stat.value}</div>
-                      <div className="text-sm text-muted-foreground">{stat.label}</div>
+                      <div className="text-2xl font-bold gradient-text">
+                        {stat.value}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {stat.label}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -95,14 +101,15 @@ export default function Home() {
         </section>
 
         {/* Features Section */}
-        <section className="py-20 bg-gradient-to-r from-green-50 to-blue-50">
+        <section className="py-20 bg-gradient-to-r from-primary/5 to-chart-2/5">
           <div className="max-w-7xl mx-auto px-6">
             <div className="text-center mb-16">
               <h2 className="text-4xl font-bold mb-4">
                 Why Choose <span className="gradient-text">AwardFlow</span>
               </h2>
               <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-                Our platform combines cutting-edge technology with personalized recommendations
+                Our platform combines cutting-edge technology with personalized
+                recommendations
               </p>
             </div>
 
@@ -111,25 +118,34 @@ export default function Home() {
                 {
                   icon: Zap,
                   title: "Smart Matching",
-                  description: "AI-powered algorithm matches you with the perfect awards based on your profile",
-                  color: "from-yellow-500 to-orange-500"
+                  description:
+                    "AI-powered algorithm matches you with the perfect awards based on your profile",
+                  color: "from-chart-3 to-chart-4",
                 },
                 {
                   icon: Star,
                   title: "Premium Awards",
-                  description: "Access exclusive scholarships and grants from top organizations worldwide",
-                  color: "from-purple-500 to-pink-500"
+                  description:
+                    "Access exclusive scholarships and grants from top organizations worldwide",
+                  color: "from-chart-4 to-chart-5",
                 },
                 {
                   icon: TrendingUp,
                   title: "Track Progress",
-                  description: "Monitor your applications and celebrate your achievements in real-time",
-                  color: "from-green-500 to-emerald-500"
-                }
+                  description:
+                    "Monitor your applications and celebrate your achievements in real-time",
+                  color: "from-primary to-chart-2",
+                },
               ].map((feature, index) => (
-                <div key={index} className="card-modern p-8 text-center group animate-slide-in-up" style={{ animationDelay: `${index * 0.2}s` }}>
+                <div
+                  key={index}
+                  className="card-modern p-8 text-center group animate-slide-in-up"
+                  style={{ animationDelay: `${index * 0.2}s` }}
+                >
                   <div className="flex justify-center mb-6">
-                    <div className={`p-4 rounded-full bg-gradient-to-r ${feature.color} group-hover:scale-110 transition-transform duration-300`}>
+                    <div
+                      className={`p-4 rounded-full bg-gradient-to-r ${feature.color} group-hover:scale-110 transition-transform duration-300`}
+                    >
                       <feature.icon className="h-8 w-8 text-white" />
                     </div>
                   </div>
@@ -149,7 +165,8 @@ export default function Home() {
                 Award <span className="gradient-text">Categories</span>
               </h2>
               <p className="text-xl text-muted-foreground">
-                Explore diverse opportunities across different fields and interests
+                Explore diverse opportunities across different fields and
+                interests
               </p>
             </div>
 
@@ -160,16 +177,20 @@ export default function Home() {
                 "Leadership & Service",
                 "Arts & Creativity",
                 "STEM & Technology",
-                "International Studies"
+                "International Studies",
               ].map((category, index) => (
-                <div key={index} className="geometric-item flex items-center justify-center">
-                  <span className="text-white font-semibold text-center px-4">{category}</span>
+                <div
+                  key={index}
+                  className="geometric-item flex items-center justify-center"
+                >
+                  <span className="text-foreground font-semibold text-center px-4">
+                    {category}
+                  </span>
                 </div>
               ))}
             </div>
           </div>
         </section>
-
 
         {/* Footer */}
         <footer className="py-16 border-t border-border">
@@ -178,31 +199,76 @@ export default function Home() {
               <div className="col-span-2">
                 <div className="flex items-center space-x-2 mb-4">
                   <div className="hexagon"></div>
-                  <span className="text-2xl font-bold gradient-text">AwardFlow</span>
+                  <span className="text-2xl font-bold gradient-text">
+                    AwardFlow
+                  </span>
                 </div>
                 <p className="text-muted-foreground max-w-md">
-                  Empowering students worldwide to discover and secure academic awards that fuel their educational dreams.
+                  Empowering students worldwide to discover and secure academic
+                  awards that fuel their educational dreams.
                 </p>
               </div>
               <div>
                 <h3 className="font-semibold mb-4">Quick Links</h3>
                 <ul className="space-y-2 text-muted-foreground">
-                  <li><Link href="/awards" className="hover:text-foreground transition-colors">Browse Awards</Link></li>
-                  <li><Link href="/dashboard" className="hover:text-foreground transition-colors">Dashboard</Link></li>
-                  <li><Link href="/profile" className="hover:text-foreground transition-colors">Profile</Link></li>
+                  <li>
+                    <Link
+                      href="/awards"
+                      className="hover:text-foreground transition-colors"
+                    >
+                      Browse Awards
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href="/dashboard"
+                      className="hover:text-foreground transition-colors"
+                    >
+                      Dashboard
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href="/profile"
+                      className="hover:text-foreground transition-colors"
+                    >
+                      Profile
+                    </Link>
+                  </li>
                 </ul>
               </div>
               <div>
                 <h3 className="font-semibold mb-4">Support</h3>
                 <ul className="space-y-2 text-muted-foreground">
-                  <li><Link href="/help" className="hover:text-foreground transition-colors">Help Center</Link></li>
-                  <li><Link href="/contact" className="hover:text-foreground transition-colors">Contact Us</Link></li>
-                  <li><Link href="/privacy" className="hover:text-foreground transition-colors">Privacy Policy</Link></li>
+                  <li>
+                    <Link
+                      href="/help"
+                      className="hover:text-foreground transition-colors"
+                    >
+                      Help Center
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href="/contact"
+                      className="hover:text-foreground transition-colors"
+                    >
+                      Contact Us
+                    </Link>
+                  </li>
+                  <li>
+                    <Link
+                      href="/faq"
+                      className="hover:text-foreground transition-colors"
+                    >
+                      FAQ
+                    </Link>
+                  </li>
                 </ul>
               </div>
             </div>
             <div className="border-t border-border mt-8 pt-8 text-center text-muted-foreground">
-              <p>© 2025 AwardFlow</p>
+              <p>&copy; 2024 AwardFlow. All rights reserved.</p>
             </div>
           </div>
         </footer>
