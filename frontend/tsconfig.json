@@ -1,9 +1,11 @@
 {
   "compilerOptions": {
+    
     "target": "ES2017",
     "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
     "skipLibCheck": true,
+    
     "strict": true,
     "noEmit": true,
     "esModuleInterop": true,
@@ -11,7 +13,7 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
-    "jsx": "preserve",
+      "jsx": "react-jsx",         // or "preserve" if using older setups
     "incremental": true,
     "plugins": [
       {

@@ -1,19 +1,30 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { HoveredLink, Menu, MenuItem } from "./ui/navbar-menu"
 import { Trophy } from 'lucide-react'
 import { ProductItem } from "./ui/product-item"
 
 export function FloatingNavbar() {
   const [active, setActive] = useState<string | null>(null)
+  const [scrolled, setScrolled] = useState(false)
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 50)
+    }
+    window.addEventListener('scroll', handleScroll)
+    return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
 
   return (
-    <div className="fixed top-10 inset-x-0 max-w-2xl mx-auto z-50">
+    <div className={`fixed top-10 inset-x-0 max-w-2xl mx-auto z-50 transition-all duration-300 ${scrolled ? 'top-4' : 'top-10'}`}>
       <Menu setActive={setActive}>
         <div className="flex items-center space-x-2 mr-4">
           <Trophy className="h-5 w-5 text-blue-600" />
-          <span className="font-bold text-lg">Awards Portal</span>
+          <span className="font-bold text-lg bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            Awards Portal
+          </span>
         </div>
         <MenuItem setActive={setActive} active={active} item="Home">
           <div className="flex flex-col space-y-4 text-sm">
