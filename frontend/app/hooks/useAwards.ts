@@ -20,3 +20,19 @@ export function useAwards() {
     },
   });
 }
+export function fetchAwardsDetails(code: string) {
+  return useQuery({
+    queryKey: ["awards"],
+    queryFn: async (): Promise<Award[]> => {
+      const { data, error } = await supabase
+        .from("awards")
+        .select("*")
+        .eq("code", code);
+      if (error) {
+        throw new Error(`Failed to fetch awards: ${error.message}`);
+      }
+
+      return data || [];
+    },
+  });
+}

@@ -2,6 +2,8 @@
 import { useAwards } from "@/app/hooks/useAwards";
 import type { Award } from "@/types/awards";
 import { Button } from "./ui/button";
+import Link from "next/link";
+import { ExternalLink } from "lucide-react";
 
 function AwardCard({ award }: { award: Award }) {
   const formatDate = (dateString: string) => {
@@ -83,9 +85,12 @@ function AwardCard({ award }: { award: Award }) {
         >
           Deadline: {formatDate(award.deadline)}
         </span>
-        <Button className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors">
-          Apply Now
-        </Button>
+        <Link href={`/awards/${award.code}`}>
+          <Button className="btn-primary group">
+            Apply Now
+            <ExternalLink className="ml-2 h-4 w-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+          </Button>
+        </Link>
       </div>
     </div>
   );
