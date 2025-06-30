@@ -1,78 +1,25 @@
-import { Award, Search, Filter, Star, Clock, DollarSign, BookOpen, Target } from "lucide-react";
+"use client";
+
+import { useState } from "react";
+import {
+  Award,
+  Search,
+  Filter,
+  Clock,
+  DollarSign,
+  TrendingUp,
+  Calendar,
+  Users,
+  Sparkles,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AwardsList } from "@/components/awards";
+import { NavbarDemo } from "@/components/womp";
 
-export default function AwardsPage() {
-  
-  const awards = [
-    {
-      id: 1,
-      title: "Merit Scholarship",
-      organization: "University Foundation",
-      amount: "$10,000",
-      deadline: "2024-03-15",
-      category: "Academic Excellence",
-      description: "Awarded to students with outstanding academic performance and leadership qualities.",
-      requirements: ["GPA 3.8+", "Leadership experience", "Essay submission"],
-      featured: true
-    },
-    {
-      id: 2,
-      title: "Research Grant",
-      organization: "National Science Foundation",
-      amount: "$5,000",
-      deadline: "2024-04-01",
-      category: "Research",
-      description: "Funding for innovative research projects in STEM fields.",
-      requirements: ["Research proposal", "Faculty recommendation", "GPA 3.5+"],
-      featured: false
-    },
-    {
-      id: 3,
-      title: "Leadership Award",
-      organization: "Student Leadership Council",
-      amount: "$2,500",
-      deadline: "2024-03-30",
-      category: "Leadership",
-      description: "Recognition for outstanding leadership and community service.",
-      requirements: ["Leadership role", "Community service", "Essay submission"],
-      featured: true
-    },
-    {
-      id: 4,
-      title: "Creative Arts Scholarship",
-      organization: "Arts Foundation",
-      amount: "$8,000",
-      deadline: "2024-04-15",
-      category: "Arts",
-      description: "Support for students pursuing creative arts and design.",
-      requirements: ["Portfolio submission", "Creative essay", "GPA 3.0+"],
-      featured: false
-    },
-    {
-      id: 5,
-      title: "International Student Grant",
-      organization: "Global Education Fund",
-      amount: "$15,000",
-      deadline: "2024-05-01",
-      category: "International",
-      description: "Financial support for international students pursuing higher education.",
-      requirements: ["International student", "Financial need", "Academic merit"],
-      featured: true
-    },
-    {
-      id: 6,
-      title: "Technology Innovation Award",
-      organization: "Tech Innovation Institute",
-      amount: "$12,000",
-      deadline: "2024-04-30",
-      category: "Technology",
-      description: "Award for innovative technology projects and startups.",
-      requirements: ["Innovation project", "Business plan", "Technical skills"],
-      featured: false
-    }
-  ];
+function AwardsPage() {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("All Categories");
 
   const categories = [
     "All Categories",
@@ -81,163 +28,133 @@ export default function AwardsPage() {
     "Leadership",
     "Arts",
     "International",
-    "Technology"
+    "Technology",
   ];
+
+  const handleSearch = (value: string) => {
+    setSearchTerm(value);
+  };
+
+  const handleCategoryChange = (category: string) => {
+    setSelectedCategory(category);
+  };
 
   return (
     <div className="min-h-screen geometric-bg">
       {/* Floating Elements */}
-      <div className="floating-element" style={{ top: '10%', left: '5%' }}></div>
-      <div className="floating-element" style={{ bottom: '20%', right: '10%' }}></div>
+      <div className="fixed top-20 left-10 floating-element animate-wave opacity-60" />
+      <div className="fixed top-40 right-20 floating-element animate-wave opacity-40" />
+      <div className="fixed bottom-32 left-1/4 floating-element animate-wave opacity-30" />
 
-      <div className="relative z-10 max-w-7xl mx-auto p-8">
-        {/* Header */}
-        <div className="mb-12">
-          <div className="text-center mb-8">
-            <h1 className="text-5xl font-bold text-foreground mb-4">
-              Discover <span className="gradient-text">Awards</span>
+      <div className="max-w-7xl mx-auto p-8 relative z-10">
+        {/* Navigation */}
+        <div className="mb-36">
+          <NavbarDemo />
+        </div>
+
+        {/* Hero Section */}
+        <div className="mb-16">
+          <div className="text-center mb-12 animate-slide-in-up">
+            {/* <div className="inline-flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-full mb-6 animate-bounce-in">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium text-primary">
+                New awards added weekly
+              </span>
+            </div> */}
+
+            <h1 className="text-6xl md:text-7xl font-bold text-foreground mb-6">
+              Browse <span className="gradient-text">Awards</span>
             </h1>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-              Find scholarships, grants, and awards that match your profile and academic goals
-            </p>
+
+            {/* <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+              Unlock opportunities with our comprehensive database of
+              scholarships, grants, and awards tailored to your academic journey
+            </p> */}
           </div>
 
-          {/* Search and Filter */}
-          <div className="flex flex-col md:flex-row gap-4 mb-8">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-              <Input
-                placeholder="Search awards, organizations, or keywords..."
-                className="pl-10"
-              />
+          {/* Search Section */}
+          <div className="max-w-4xl mx-auto animate-slide-in-up">
+            <div className="relative mb-8">
+              <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-blue-600/20 rounded-2xl blur-xl" />
+              <div className="relative bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6">
+                <div className="flex flex-col md:flex-row gap-4 mb-6">
+                  <div className="flex-1 relative group">
+                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5 group-focus-within:text-primary transition-colors" />
+                    <Input
+                      placeholder="Search awards, organizations, or keywords..."
+                      className="pl-12 h-12 bg-background/50 border-border/50 text-lg focus:ring-2 focus:ring-primary/20"
+                      value={searchTerm}
+                      onChange={(e) => handleSearch(e.target.value)}
+                    />
+                  </div>
+                  <Button size="lg" className="btn-primary h-12 px-8">
+                    <Filter className="mr-2 h-5 w-5" />
+                    Advanced Filters
+                  </Button>
+                </div>
+
+                {/* Categories */}
+                <div className="flex flex-wrap gap-3">
+                  {categories.map((category, index) => (
+                    <Button
+                      key={index}
+                      variant={
+                        selectedCategory === category ? "default" : "outline"
+                      }
+                      size="sm"
+                      onClick={() => handleCategoryChange(category)}
+                      className={`transition-all duration-300 ${
+                        selectedCategory === category
+                          ? "btn-primary shadow-lg shadow-primary/25"
+                          : "btn-secondary hover:scale-105"
+                      }`}
+                    >
+                      {category}
+                    </Button>
+                  ))}
+                </div>
+              </div>
             </div>
-            <Button variant="outline" className="card-modern">
-              <Filter className="mr-2 h-4 w-4" />
-              Filters
-            </Button>
-          </div>
-
-          {/* Category filters */}
-          <div className="flex flex-wrap gap-2 mb-8">
-            {categories.map((category, index) => (
-              <Button
-                key={index}
-                variant={index === 0 ? "default" : "outline"}
-                size="sm"
-                className={index === 0 ? "btn-primary" : "btn-secondary"}
-              >
-                {category}
-              </Button>
-            ))}
           </div>
         </div>
 
-        {/* Featured Awards */}
-        <div className="mb-12">
-          <h2 className="text-2xl font-bold text-foreground mb-6 flex items-center gap-2">
-            <Star className="h-6 w-6 text-chart-3" />
-            Featured Awards
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {awards.filter(award => award.featured).map((award) => (
-              <Card key={award.id} className="card-modern group hover:scale-105 transition-all duration-300">
-                <CardHeader className="pb-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <CardTitle className="text-foreground group-hover:text-primary transition-colors">
-                        {award.title}
-                      </CardTitle>
-                      <CardDescription className="text-muted-foreground">
-                        {award.organization}
-                      </CardDescription>
-                    </div>
-                    <div className="p-2 rounded-full bg-gradient-to-r from-chart-3/20 to-chart-4/20">
-                      <Star className="h-4 w-4 text-chart-3" />
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-sm text-muted-foreground line-clamp-2">
-                    {award.description}
-                  </p>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-primary font-semibold">
-                      <DollarSign className="h-4 w-4" />
-                      {award.amount}
-                    </div>
-                    <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                      <Clock className="h-3 w-3" />
-                      {award.deadline}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="px-2 py-1 rounded-full bg-gradient-to-r from-primary/20 to-chart-2/20 text-xs text-primary">
-                      {award.category}
-                    </div>
-                  </div>
-                  <Button className="w-full btn-primary">
-                    Apply Now
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
+        {/* Awards Section */}
+        <div className="animate-slide-in-up">
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <Award className="h-8 w-8 text-primary" />
+                <div className="absolute inset-0 animate-pulse-ring border-2 border-primary rounded-full" />
+              </div>
+              <div>
+                <h2 className="text-3xl font-bold text-foreground">
+                  Featured Awards
+                </h2>
+                <p className="text-muted-foreground">
+                  Handpicked opportunities for you
+                </p>
+              </div>
+            </div>
 
-        {/* All Awards */}
-        <div>
-          <h2 className="text-2xl font-bold text-foreground mb-6 flex items-center gap-2">
-            <Award className="h-6 w-6 text-primary" />
-            All Awards
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {awards.map((award) => (
-              <Card key={award.id} className="card-modern group hover:scale-105 transition-all duration-300">
-                <CardHeader className="pb-4">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <CardTitle className="text-foreground group-hover:text-primary transition-colors">
-                        {award.title}
-                      </CardTitle>
-                      <CardDescription className="text-muted-foreground">
-                        {award.organization}
-                      </CardDescription>
-                    </div>
-                    {award.featured && (
-                      <div className="p-2 rounded-full bg-gradient-to-r from-chart-3/20 to-chart-4/20">
-                        <Star className="h-4 w-4 text-chart-3" />
-                      </div>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <p className="text-sm text-muted-foreground line-clamp-2">
-                    {award.description}
-                  </p>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-primary font-semibold">
-                      <DollarSign className="h-4 w-4" />
-                      {award.amount}
-                    </div>
-                    <div className="flex items-center gap-2 text-muted-foreground text-sm">
-                      <Clock className="h-3 w-3" />
-                      {award.deadline}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <div className="px-2 py-1 rounded-full bg-gradient-to-r from-primary/20 to-chart-2/20 text-xs text-primary">
-                      {award.category}
-                    </div>
-                  </div>
-                  <Button className="w-full btn-primary">
-                    Apply Now
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
+            <div className="hidden md:flex items-center gap-4">
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <Clock className="h-4 w-4" />
+                <span>Last updated: 2 hours ago</span>
+              </div>
+              <div className="hexagon" />
+            </div>
           </div>
+
+          {/* Morphing decoration */}
+          <div className="absolute top-20 right-10 w-32 h-32 opacity-10 -z-10">
+            <div className="morphing-shape" />
+          </div>
+
+          <AwardsList />
         </div>
       </div>
     </div>
   );
-} 
+}
+
+export default AwardsPage;
