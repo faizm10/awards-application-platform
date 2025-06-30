@@ -1,12 +1,13 @@
 "use client"
-import { useState } from "react"
 
+import { useState } from "react"
 import { HoveredLink, Menu, MenuItem } from "./ui/navbar-menu"
-import { Trophy } from "lucide-react"
+import { Trophy } from 'lucide-react'
 import { ProductItem } from "./ui/product-item"
 
 export function FloatingNavbar() {
   const [active, setActive] = useState<string | null>(null)
+
   return (
     <div className="fixed top-10 inset-x-0 max-w-2xl mx-auto z-50">
       <Menu setActive={setActive}>

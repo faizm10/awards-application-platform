@@ -1,9 +1,10 @@
 "use client"
+
 import { FloatingNavbar } from "@/components/floating-navbar"
 import { HeroSection } from "@/components/hero-section"
 import { FeaturesSection } from "@/components/features-section"
 import { CTASection } from "@/components/cta-section"
-import { Trophy } from "lucide-react"
+import { Trophy } from 'lucide-react'
 
 export default function HomePage() {
   return (
@@ -12,7 +13,7 @@ export default function HomePage() {
       <HeroSection />
       <FeaturesSection />
       <CTASection />
-
+      
       {/* Footer */}
       <footer className="bg-gray-900 text-white py-16">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

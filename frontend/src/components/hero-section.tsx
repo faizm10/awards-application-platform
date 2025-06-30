@@ -1,7 +1,8 @@
 "use client"
-import { motion } from "motion/react"
+
+import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { Search, Sparkles, ArrowRight } from "lucide-react"
+import { Search, Sparkles, ArrowRight } from 'lucide-react'
 import Link from "next/link"
 
 export function HeroSection() {
@@ -25,7 +26,7 @@ export function HeroSection() {
             }}
             transition={{
               duration: Math.random() * 10 + 10,
-              repeat: Number.POSITIVE_INFINITY,
+              repeat: Infinity,
               delay: Math.random() * 5,
             }}
             style={{
@@ -61,7 +62,7 @@ export function HeroSection() {
           <motion.span
             className="block bg-gradient-to-r from-blue-600 via-purple-600 to-indigo-600 bg-clip-text text-transparent"
             animate={{ backgroundPosition: ["0%", "100%", "0%"] }}
-            transition={{ duration: 3, repeat: Number.POSITIVE_INFINITY }}
+            transition={{ duration: 3, repeat: Infinity }}
           >
             Academic Potential
           </motion.span>
@@ -73,8 +74,12 @@ export function HeroSection() {
           transition={{ duration: 0.8, delay: 0.4 }}
           className="text-xl md:text-2xl text-gray-600 mb-12 max-w-4xl mx-auto leading-relaxed"
         >
-          Discover scholarships, grants, and awards tailored to your achievements. Join thousands of students who have
-          unlocked their academic dreams through our platform.
+          Discover scholarships, grants, and{" "}
+          <span className="relative inline-block">
+            <span className="relative z-10">awards</span>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-400/30 to-transparent blur-sm animate-spotlight"></div>
+          </span>{" "}
+          tailored to your achievements. Join thousands of students who have unlocked their academic dreams through our platform.
         </motion.p>
 
         <motion.div

@@ -1,29 +1,31 @@
 "use client"
 
-export const ProductItem = ({
-  title,
-  description,
-  href,
-  src,
-}: {
+import Image from "next/image"
+import Link from "next/link"
+
+interface ProductItemProps {
   title: string
   description: string
   href: string
   src: string
-}) => {
+}
+
+export function ProductItem({ title, description, href, src }: ProductItemProps) {
   return (
-    <a href={href} className="flex space-x-2">
-      <img
-        src={src || "/placeholder.svg"}
-        width={140}
-        height={70}
-        alt={title}
-        className="shrink-0 rounded-md shadow-2xl"
-      />
-      <div>
-        <h4 className="text-xl font-bold mb-1 text-black dark:text-white">{title}</h4>
-        <p className="text-neutral-700 text-sm max-w-[10rem] dark:text-neutral-300">{description}</p>
+    <Link href={href} className="flex flex-col gap-2 group">
+      <div className="relative aspect-video overflow-hidden rounded-lg">
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-100 to-indigo-100 group-hover:opacity-75 transition-opacity" />
+        <Image
+          src={src || "/placeholder.svg"}
+          alt={title}
+          fill
+          className="object-cover transition-transform group-hover:scale-105 duration-300"
+        />
       </div>
-    </a>
+      <div>
+        <h3 className="font-medium text-neutral-900 group-hover:text-blue-600 transition-colors">{title}</h3>
+        <p className="text-xs text-neutral-500">{description}</p>
+      </div>
+    </Link>
   )
 }

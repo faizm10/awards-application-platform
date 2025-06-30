@@ -1,7 +1,8 @@
 "use client"
-import { motion } from "motion/react"
+
+import { motion } from "framer-motion"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Search, Award, Trophy, Target, Clock, Shield } from "lucide-react"
+import { Search, Award, Trophy, Target, Clock, Shield } from 'lucide-react'
 
 const features = [
   {
@@ -49,7 +50,6 @@ export function FeaturesSection() {
   return (
     <section className="py-24 bg-white relative overflow-hidden">
       <div className="absolute inset-0 bg-gradient-to-br from-gray-50 to-blue-50/30"></div>
-
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -65,7 +65,12 @@ export function FeaturesSection() {
             </span>
           </h2>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Powerful features designed to streamline your award discovery and application process
+            Powerful features designed to streamline your{" "}
+            <span className="relative inline-block">
+              <span className="relative z-10">award</span>
+              <div className="absolute inset-0 bg-gradient-to-r from-transparent via-blue-400/30 to-transparent blur-sm animate-spotlight"></div>
+            </span>{" "}
+            discovery and application process
           </p>
         </motion.div>
 

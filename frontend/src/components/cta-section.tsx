@@ -1,7 +1,8 @@
 "use client"
-import { motion } from "motion/react"
+
+import { motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { ArrowRight, Sparkles } from "lucide-react"
+import { ArrowRight, Sparkles } from 'lucide-react'
 import Link from "next/link"
 
 export function CTASection() {
@@ -24,7 +25,7 @@ export function CTASection() {
             }}
             transition={{
               duration: Math.random() * 15 + 10,
-              repeat: Number.POSITIVE_INFINITY,
+              repeat: Infinity,
               delay: Math.random() * 5,
             }}
             style={{
@@ -69,8 +70,12 @@ export function CTASection() {
           viewport={{ once: true }}
           className="text-xl text-white/90 mb-12 max-w-3xl mx-auto"
         >
-          Join thousands of successful students who have discovered their perfect awards. Start your journey today and
-          unlock opportunities you never knew existed.
+          Join thousands of successful students who have discovered their perfect{" "}
+          <span className="relative inline-block">
+            <span className="relative z-10">awards</span>
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/30 to-transparent blur-sm animate-spotlight"></div>
+          </span>. 
+          Start your journey today and unlock opportunities you never knew existed.
         </motion.p>
 
         <motion.div
