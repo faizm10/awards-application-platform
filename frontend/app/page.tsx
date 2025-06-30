@@ -8,15 +8,11 @@ import { Button } from "@/components/ui/button";
 export default function Home() {
   return (
     <main className="min-h-screen geometric-bg">
-      {/* Floating Elements */}
-      {/* <div className="floating-element" style={{ top: '10%', left: '5%' }}></div>
-      <div className="floating-element" style={{ top: '20%', right: '10%' }}></div>
-      <div className="floating-element" style={{ bottom: '30%', left: '15%' }}></div> */}
 
       <div className="relative z-10">
-        {/* Header Navigation */}
+
         <header className="relative">
-          <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 to-blue-500/10 backdrop-blur-sm"></div>
+          {/* <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 to-blue-500/10 backdrop-blur-sm"></div> */}
           <nav className="relative max-w-7xl mx-auto px-6 py-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-4">
