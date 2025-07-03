@@ -1,9 +1,11 @@
 "use client";
-import { useAwards } from "@/app/hooks/useAwards";
+// import { useAwards } from "@/app/hooks/useAwards"; // Commented out GraphQL/React Query
 import type { Award } from "@/types/awards";
 import { Button } from "./ui/button";
 import Link from "next/link";
 import { ExternalLink } from "lucide-react";
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
 
 function AwardCard({ award }: { award: Award }) {
   const formatDate = (dateString: string) => {
@@ -87,7 +89,7 @@ function AwardCard({ award }: { award: Award }) {
         </span>
         <Link href={`/awards/${award.code}`}>
           <Button className="btn-primary group">
-            Apply Now
+            More Information
             <ExternalLink className="ml-2 h-4 w-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
           </Button>
         </Link>
@@ -97,7 +99,31 @@ function AwardCard({ award }: { award: Award }) {
 }
 
 export function AwardsList() {
-  const { data: awards, isLoading, error } = useAwards();
+  // const { data: awards, isLoading, error } = useAwards(); // Commented out GraphQL/React Query
+  const [awards, setAwards] = useState<Award[] | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchAwards = async () => {
+      setIsLoading(true);
+      setError(null);
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("awards")
+        .select("*")
+        .eq("is_active", true)
+        .order("deadline", { ascending: true });
+      if (error) {
+        setError(error.message);
+        setIsLoading(false);
+        return;
+      }
+      setAwards(data || []);
+      setIsLoading(false);
+    };
+    fetchAwards();
+  }, []);
 
   if (isLoading) {
     return (
@@ -127,7 +153,7 @@ export function AwardsList() {
           </svg>
           <h3 className="text-lg font-semibold">Error Loading Awards</h3>
           <p className="text-sm text-gray-600 mt-2">
-            {error instanceof Error ? error.message : "Failed to load awards"}
+            {error}
           </p>
         </div>
         <button
@@ -177,7 +203,9 @@ export function AwardsList() {
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-1">
         {awards.map((award) => (
-          <AwardCard key={award.id} award={award} />
+          <Link key={award.id} href={`/awards/${award.code}`} className="block hover:shadow-lg transition-shadow">
+            <AwardCard award={award} />
+          </Link>
         ))}
       </div>
     </div>

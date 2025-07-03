@@ -1,23 +1,15 @@
-
 import Link from "next/link";
-import {
-  Award,
-  Users,
-  TrendingUp,
-  Zap,
-  ArrowRight,
-  Star,
-} from "lucide-react";
+import { Award, Users, TrendingUp, Zap, ArrowRight, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { NavbarDemo } from "../components/womp";
 export default function Home() {
-
   return (
     <main className="min-h-screen geometric-bg">
       <div className="relative z-10">
-      <section className="relative py-20 ">
-      <NavbarDemo /></section>
-        
+        <section className="relative py-20 ">
+          <NavbarDemo />
+        </section>
+
         <section className="relative py-20 ">
           <div className="max-w-7xl mx-auto px-6">
             <div className="grid lg:grid-cols-2 gap-12 items-center">

@@ -36,7 +36,9 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <QueryProvider>{children}</QueryProvider>
+          <Providers>
+            <QueryProvider>{children}</QueryProvider>
+          </Providers>
         </ThemeProvider>
       </body>
     </html>

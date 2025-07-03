@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AwardsList } from "@/components/awards";
 import { NavbarDemo } from "@/components/womp";
+import Link from "next/link";
 
 function AwardsPage() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -55,21 +56,12 @@ function AwardsPage() {
         {/* Hero Section */}
         <div className="mb-16">
           <div className="text-center mb-12 animate-slide-in-up">
-            {/* <div className="inline-flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-full mb-6 animate-bounce-in">
-              <Sparkles className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium text-primary">
-                New awards added weekly
-              </span>
-            </div> */}
+           
 
             <h1 className="text-6xl md:text-7xl font-bold text-foreground mb-6">
               Browse <span className="gradient-text">Awards</span>
             </h1>
 
-            {/* <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-              Unlock opportunities with our comprehensive database of
-              scholarships, grants, and awards tailored to your academic journey
-            </p> */}
           </div>
 
           {/* Search Section */}
