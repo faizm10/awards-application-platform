@@ -24,6 +24,7 @@ export function SignUpForm({
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [repeatPassword, setRepeatPassword] = useState("");
+  const [fullName, setFullName] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const router = useRouter();
@@ -41,7 +42,7 @@ export function SignUpForm({
     }
 
     try {
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
@@ -49,7 +50,15 @@ export function SignUpForm({
         },
       });
       if (error) throw error;
-      // No need to create profile here; handled by SQL trigger
+
+      // Insert full name into profile table if user is created
+      const user = data?.user;
+      if (user && fullName.trim()) {
+        const { error: profileError } = await supabase.from("profiles").update({ full_name: fullName.trim() }).eq("id", user.id);
+        if (profileError) {
+          setError("Account created, but failed to save full name. You can update it in your profile.");
+        }
+      }
       router.push("/auth/sign-up-success" + (redirect ? `?redirect=${encodeURIComponent(redirect)}` : ""));
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred");
@@ -68,6 +77,17 @@ export function SignUpForm({
         <CardContent>
           <form onSubmit={handleSignUp}>
             <div className="flex flex-col gap-6">
+              <div className="grid gap-2">
+                <Label htmlFor="full-name">Full Name</Label>
+                <Input
+                  id="full-name"
+                  type="text"
+                  placeholder="Your full name"
+                  required
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                />
+              </div>
               <div className="grid gap-2">
                 <Label htmlFor="email">Email</Label>
                 <Input

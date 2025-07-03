@@ -163,6 +163,54 @@ const ApplicationStatus: React.FC<ApplicationStatusProps> = ({ awardId, userId }
     }
   }
 
+  const handleSaveProgress = async () => {
+    setSubmitting(true)
+    setError(null)
+
+    // Prevent accidental overwrite of student_id by filtering it out from formData
+    const { student_id, ...safeFormData } = formData
+    const supabase = createClient()
+
+    // Check if an in-progress application already exists
+    const { data: existing, error: fetchError } = await supabase
+      .from("applications")
+      .select("id")
+      .eq("award_id", awardId)
+      .eq("student_id", userId)
+      .eq("status", "in_progress")
+      .maybeSingle()
+
+    let saveError = null
+    if (existing && existing.id) {
+      // Update existing in-progress application
+      const { error: updateError } = await supabase
+        .from("applications")
+        .update({
+          ...safeFormData,
+          status: "in_progress",
+        })
+        .eq("id", existing.id)
+      saveError = updateError
+    } else {
+      // Insert new in-progress application
+      const { error: insertError } = await supabase.from("applications").insert({
+        award_id: awardId,
+        student_id: userId,
+        status: "in_progress",
+        ...safeFormData,
+      })
+      saveError = insertError
+    }
+
+    if (saveError) {
+      setError("Failed to save progress. Please try again.")
+    } else {
+      setError(null)
+      alert("Progress saved!")
+    }
+    setSubmitting(false)
+  }
+
   if (loading) {
     return (
       <Card>
@@ -268,6 +316,7 @@ const ApplicationStatus: React.FC<ApplicationStatusProps> = ({ awardId, userId }
             onFileUpload={handleFileUpload}
             submitting={submitting}
             uploadingFiles={uploadingFiles}
+            onSaveProgress={handleSaveProgress}
           />
         )}
       </CardContent>
@@ -330,7 +379,8 @@ const ApplicationForm: React.FC<{
   onFileUpload: (fieldName: string, file: File) => void
   submitting: boolean
   uploadingFiles: Record<string, boolean>
-}> = ({ requiredFields, formData, setFormData, onSubmit, onFileUpload, submitting, uploadingFiles }) => {
+  onSaveProgress: () => void
+}> = ({ requiredFields, formData, setFormData, onSubmit, onFileUpload, submitting, uploadingFiles, onSaveProgress }) => {
   const handleInputChange = (fieldName: string, value: string) => {
     setFormData((prev) => ({ ...prev, [fieldName]: value }))
   }
@@ -436,22 +486,33 @@ const ApplicationForm: React.FC<{
   return (
     <form onSubmit={onSubmit} className="space-y-6">
       {requiredFields.map(renderField)}
-
-      <Button
-        type="submit"
-        className="w-full mt-6"
-        size="lg"
-        disabled={submitting || !isFormValid() || Object.values(uploadingFiles).some(Boolean)}
-      >
-        {submitting ? (
-          <>
-            <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
-            Submitting...
-          </>
-        ) : (
-          "Submit Application"
-        )}
-      </Button>
+      <div className="flex flex-col gap-2 mt-6">
+        <Button
+          type="submit"
+          className="w-full"
+          size="lg"
+          disabled={submitting || !isFormValid() || Object.values(uploadingFiles).some(Boolean)}
+        >
+          {submitting ? (
+            <>
+              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent mr-2" />
+              Submitting...
+            </>
+          ) : (
+            "Submit Application"
+          )}
+        </Button>
+        <Button
+          type="button"
+          variant="secondary"
+          className="w-full"
+          size="lg"
+          disabled={submitting || Object.values(uploadingFiles).some(Boolean)}
+          onClick={onSaveProgress}
+        >
+          Save Progress
+        </Button>
+      </div>
     </form>
   )
 }
