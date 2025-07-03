@@ -18,8 +18,9 @@ import { useState } from "react";
 
 export function SignUpForm({
   className,
+  redirect,
   ...props
-}: React.ComponentPropsWithoutRef<"div">) {
+}: React.ComponentPropsWithoutRef<"div"> & { redirect?: string }) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [repeatPassword, setRepeatPassword] = useState("");
@@ -44,12 +45,12 @@ export function SignUpForm({
         email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/dashboard`,
+          emailRedirectTo: `${window.location.origin}${redirect || "/dashboard"}`,
         },
       });
       if (error) throw error;
       // No need to create profile here; handled by SQL trigger
-      router.push("/auth/sign-up-success");
+      router.push("/auth/sign-up-success" + (redirect ? `?redirect=${encodeURIComponent(redirect)}` : ""));
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred");
     } finally {
