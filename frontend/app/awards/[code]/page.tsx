@@ -116,8 +116,8 @@ const AwardDetailPage = () => {
                 references).
               </li>
               <li>
-                Complete the online application form:
-                <a
+                Complete the online application form
+                {/* <a
                   href={
                     "application_link" in award &&
                     (award as any).application_link
@@ -129,7 +129,7 @@ const AwardDetailPage = () => {
                   className="text-blue-600 underline ml-1"
                 >
                   Apply Here
-                </a>
+                </a> */}
               </li>
               <li>
                 Submit your application before{" "}
