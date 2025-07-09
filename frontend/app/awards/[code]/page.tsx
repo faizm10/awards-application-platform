@@ -221,7 +221,7 @@ const AwardDetailPage = () => {
               {award.eligibility}
             </p>
           </section>
-{/* 
+          {/* 
           <section className="card-modern p-6">
             <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
               <svg width="20" height="20" fill="none" viewBox="0 0 24 24">
@@ -278,7 +278,6 @@ const AwardDetailPage = () => {
   );
 };
 
-// Helper component (keeping your existing InfoCard)
 const InfoCard: React.FC<{
   icon: React.ReactNode;
   label: string;

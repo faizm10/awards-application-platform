@@ -6,7 +6,12 @@ export async function useDashboardData() {
   // Get user
   const { data, error } = await supabase.auth.getUser();
   if (error || !data?.user) {
-    return { user: null, profile: null, applications: [], error: error || new Error("No user") };
+    return {
+      user: null,
+      profile: null,
+      applications: [],
+      error: error || new Error("No user"),
+    };
   }
 
   // Fetch profile (include full_name)
@@ -30,4 +35,4 @@ export async function useDashboardData() {
     applications: applications || [],
     error: profileError || appError || null,
   };
-} 
+}
