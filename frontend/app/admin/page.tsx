@@ -45,10 +45,49 @@ const AdminDashboard = () => {
     citizenship: [] as string[],
     description: "",
     eligibility: "",
+    application_method: "",
     category: "",
   })
 
+  // Add these new state variables after the existing state declarations (around line 25)
+  const [requiredFields, setRequiredFields] = useState<
+    Array<{
+      field_name: string
+      label: string
+      type: string
+      required: boolean
+      question?: string
+      unique_id?: string
+    }>
+  >([])
+
+  const [selectedFieldOption, setSelectedFieldOption] = useState("")
+
+  // Add this predefined fields configuration after the state declarations
+  const PREDEFINED_FIELDS = [
+    { field_name: "first_name", label: "Student First Name", type: "text" },
+    { field_name: "last_name", label: "Student Last Name", type: "text" },
+    { field_name: "student_id_text", label: "Student ID", type: "text" },
+    { field_name: "major_program", label: "Major/Program", type: "text" },
+    { field_name: "credits_completed", label: "Credits Completed", type: "text" },
+    { field_name: "email", label: "Email Address", type: "text" },
+    { field_name: "resume_url", label: "Upload Resume", type: "file" },
+    { field_name: "letter_url", label: "Upload Letter", type: "file" },
+    { field_name: "community_letter_url", label: "Community Letter", type: "file" },
+    { field_name: "essay_question", label: "Essay Question", type: "textarea" },
+    { field_name: "travel_description", label: "Travel Description", type: "textarea" },
+    { field_name: "travel_benefit", label: "Travel Benefit", type: "textarea" },
+    { field_name: "budget", label: "Budget Information", type: "textarea" },
+    { field_name: "international_intent_url", label: "International Intent Document", type: "file" },
+    { field_name: "certificate_url", label: "Upload Certificate", type: "file" },
+  ]
+
   const [citizenshipInput, setCitizenshipInput] = useState("")
+  const [showEssayQuestionModal, setShowEssayQuestionModal] = useState(false)
+  const [essayQuestionForm, setEssayQuestionForm] = useState({
+    question: "",
+    label: "",
+  })
 
   useEffect(() => {
     setMounted(true)
@@ -144,6 +183,51 @@ const AdminDashboard = () => {
     }))
   }
 
+  // Add these helper functions after the removeCitizenship function
+  const addPredefinedField = () => {
+    if (selectedFieldOption) {
+      const fieldConfig = PREDEFINED_FIELDS.find((f) => f.field_name === selectedFieldOption)
+      if (fieldConfig) {
+        if (fieldConfig.field_name === "essay_question") {
+          setShowEssayQuestionModal(true)
+        } else if (!requiredFields.some((f) => f.field_name === fieldConfig.field_name)) {
+          setRequiredFields((prev) => [...prev, { ...fieldConfig, required: true }])
+          setSelectedFieldOption("")
+        }
+      }
+    }
+  }
+
+  const removeRequiredField = (identifier: string) => {
+    setRequiredFields((prev) => prev.filter((f) => (f.unique_id || f.field_name) !== identifier))
+  }
+
+  const toggleFieldRequired = (identifier: string) => {
+    setRequiredFields((prev) =>
+      prev.map((f) => ((f.unique_id || f.field_name) === identifier ? { ...f, required: !f.required } : f)),
+    )
+  }
+
+  const addEssayQuestion = () => {
+    if (essayQuestionForm.question.trim() && essayQuestionForm.label.trim()) {
+      const uniqueId = `essay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      const essayField = {
+        field_name: `essay_question_${uniqueId}`,
+        label: essayQuestionForm.label,
+        type: "textarea",
+        required: true,
+        question: essayQuestionForm.question,
+        unique_id: uniqueId,
+      }
+
+      setRequiredFields((prev) => [...prev, essayField])
+      setEssayQuestionForm({ question: "", label: "" })
+      setShowEssayQuestionModal(false)
+      setSelectedFieldOption("")
+    }
+  }
+
+  // Update the handleSubmitAward function to include the required fields creation
   const handleSubmitAward = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
@@ -151,46 +235,73 @@ const AdminDashboard = () => {
     try {
       const supabase = createClient()
 
-      const { data, error } = await supabase
+      // First, create the award
+      const { data: awardData, error: awardError } = await supabase
         .from("awards")
         .insert([
           {
             title: awardForm.title,
             code: awardForm.code,
             donor: awardForm.donor,
-            value: Number.parseFloat(awardForm.value) || 0,
+            value: awardForm.value,
             deadline: awardForm.deadline,
             citizenship: awardForm.citizenship,
             description: awardForm.description,
             eligibility: awardForm.eligibility,
-            
+            application_method: awardForm.application_method,
             category: awardForm.category,
           },
         ])
         .select()
+        .single()
 
-      if (error) {
-        console.error("Error creating award:", error)
+      if (awardError) {
+        console.error("Error creating award:", awardError)
         alert("Error creating award. Please try again.")
-      } else {
-        console.log("Award created successfully:", data)
-        alert("Award created successfully!")
-
-        // Reset form
-        setAwardForm({
-          title: "",
-          code: "",
-          donor: "",
-          value: "",
-          deadline: "",
-          citizenship: [],
-          description: "",
-          eligibility: "",
-          category: "",
-        })
-        setCitizenshipInput("")
-        setShowCreateAwardModal(false)
+        return
       }
+
+      // Then, create the required fields if any
+      if (requiredFields.length > 0) {
+        const fieldsToInsert = requiredFields.map((field) => ({
+          award_id: awardData.id,
+          field_name: field.field_name,
+          label: field.label,
+          type: field.type,
+          required: field.required,
+          question: field.question || null,
+        }))
+
+        const { error: fieldsError } = await supabase.from("award_required_fields").insert(fieldsToInsert)
+
+        if (fieldsError) {
+          console.error("Error creating required fields:", fieldsError)
+          alert("Award created but there was an error adding required fields.")
+          return
+        }
+      }
+
+      console.log("Award and required fields created successfully")
+      alert("Award created successfully!")
+
+      // Reset all forms
+      setAwardForm({
+        title: "",
+        code: "",
+        donor: "",
+        value: "",
+        deadline: "",
+        citizenship: [],
+        description: "",
+        eligibility: "",
+        application_method: "",
+        category: "",
+      })
+      setRequiredFields([])
+      setSelectedFieldOption("")
+      setEssayQuestionForm({ question: "", label: "" })
+      setCitizenshipInput("")
+      setShowCreateAwardModal(false)
     } catch (error) {
       console.error("Error:", error)
       alert("An unexpected error occurred.")
@@ -266,9 +377,8 @@ const AdminDashboard = () => {
                     type="text"
                     value={awardForm.value}
                     onChange={(e) => handleInputChange("value", e.target.value)}
-                    placeholder="Award value"
-                    min="0"
-                    step="0.01"
+                    placeholder="x award of $1000"
+                    
                   />
                 </div>
               </div>
@@ -357,8 +467,110 @@ const AdminDashboard = () => {
                 />
               </div>
 
-              
-              
+              {/* Application Form Fields Section */}
+              <div className="space-y-4 border-t pt-6">
+                <div className="space-y-2">
+                  <h4 className="text-lg font-semibold">Application Form Fields</h4>
+                  <p className="text-sm text-muted-foreground">
+                    Select the fields that applicants need to fill out for this award.
+                  </p>
+                </div>
+
+                {/* Add Field Selector */}
+                <div className="bg-muted/30 p-4 rounded-lg space-y-4">
+                  <h5 className="font-medium">Add Required Field</h5>
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <Select value={selectedFieldOption} onValueChange={setSelectedFieldOption}>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select a field to add..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {PREDEFINED_FIELDS.filter(
+                            (field) => !requiredFields.some((rf) => rf.field_name === field.field_name),
+                          ).map((field) => (
+                            <SelectItem key={field.field_name} value={field.field_name}>
+                              <div className="flex items-center gap-2">
+                                <span>{field.label}</span>
+                                <Badge variant="outline" className="text-xs">
+                                  {field.type}
+                                </Badge>
+                              </div>
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={addPredefinedField}
+                      variant="outline"
+                      disabled={!selectedFieldOption}
+                    >
+                      <Plus className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Display Added Fields */}
+                {requiredFields.length > 0 && (
+                  <div className="space-y-3">
+                    <h5 className="font-medium">Required Fields ({requiredFields.length})</h5>
+                    <div className="space-y-2 max-h-60 overflow-y-auto">
+                      {requiredFields.map((field) => (
+                        <div
+                          key={field.unique_id || field.field_name}
+                          className="flex items-start gap-4 p-3 bg-background border rounded-lg"
+                        >
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="font-medium">{field.label}</span>
+                              <Badge variant="secondary" className="text-xs">
+                                {field.type}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground font-mono mb-1">{field.field_name}</p>
+                            {field.question && (
+                              <div className="mt-2 p-2 bg-muted/50 rounded text-xs">
+                                <span className="font-medium text-muted-foreground">Question: </span>
+                                <span className="text-foreground">{field.question}</span>
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Label className="flex items-center gap-1 text-xs">
+                              <input
+                                type="checkbox"
+                                checked={field.required}
+                                onChange={() => toggleFieldRequired(field.unique_id || field.field_name)}
+                                className="rounded"
+                              />
+                              Required
+                            </Label>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeRequiredField(field.unique_id || field.field_name)}
+                              className="text-destructive hover:text-destructive"
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {requiredFields.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No fields added yet</p>
+                    <p className="text-xs">Select fields from the dropdown above to build your application form</p>
+                  </div>
+                )}
+              </div>
 
               <div className="flex justify-end gap-4 pt-4 border-t">
                 <Button type="button" variant="outline" onClick={() => setShowCreateAwardModal(false)}>
@@ -369,6 +581,55 @@ const AdminDashboard = () => {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Essay Question Modal */}
+      {showEssayQuestionModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-background rounded-lg shadow-xl max-w-md w-full">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h3 className="text-lg font-semibold">Add Essay Question</h3>
+              <Button variant="ghost" size="icon" onClick={() => setShowEssayQuestionModal(false)}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="essay-label">Field Label *</Label>
+                <Input
+                  id="essay-label"
+                  value={essayQuestionForm.label}
+                  onChange={(e) => setEssayQuestionForm((prev) => ({ ...prev, label: e.target.value }))}
+                  placeholder="e.g., Personal Statement, Leadership Essay"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="essay-question">Essay Question *</Label>
+                <Textarea
+                  id="essay-question"
+                  value={essayQuestionForm.question}
+                  onChange={(e) => setEssayQuestionForm((prev) => ({ ...prev, question: e.target.value }))}
+                  placeholder="Enter the essay question or prompt..."
+                  rows={4}
+                />
+              </div>
+
+              <div className="flex justify-end gap-2 pt-4 border-t">
+                <Button variant="outline" onClick={() => setShowEssayQuestionModal(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={addEssayQuestion}
+                  disabled={!essayQuestionForm.question.trim() || !essayQuestionForm.label.trim()}
+                >
+                  Add Essay Question
+                </Button>
+              </div>
+            </div>
           </div>
         </div>
       )}
