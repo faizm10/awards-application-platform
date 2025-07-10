@@ -45,7 +45,6 @@ const AdminDashboard = () => {
     citizenship: [] as string[],
     description: "",
     eligibility: "",
-    application_method: "",
     category: "",
   })
 
@@ -164,7 +163,7 @@ const AdminDashboard = () => {
             citizenship: awardForm.citizenship,
             description: awardForm.description,
             eligibility: awardForm.eligibility,
-            application_method: awardForm.application_method,
+            
             category: awardForm.category,
           },
         ])
@@ -187,7 +186,6 @@ const AdminDashboard = () => {
           citizenship: [],
           description: "",
           eligibility: "",
-          application_method: "",
           category: "",
         })
         setCitizenshipInput("")
@@ -359,23 +357,8 @@ const AdminDashboard = () => {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="application_method">Application Method</Label>
-                <Select
-                  value={awardForm.application_method}
-                  onValueChange={(value) => handleInputChange("application_method", value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select application method" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="online">Online Application</SelectItem>
-                    <SelectItem value="email">Email Submission</SelectItem>
-                    <SelectItem value="mail">Mail Submission</SelectItem>
-                    <SelectItem value="in-person">In-Person Application</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              
+              
 
               <div className="flex justify-end gap-4 pt-4 border-t">
                 <Button type="button" variant="outline" onClick={() => setShowCreateAwardModal(false)}>
