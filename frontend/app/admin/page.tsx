@@ -56,7 +56,7 @@ const AdminDashboard = () => {
       label: string
       type: string
       required: boolean
-      question?: string
+      field_config?: any
       unique_id?: string
     }>
   >([])
@@ -87,6 +87,8 @@ const AdminDashboard = () => {
   const [essayQuestionForm, setEssayQuestionForm] = useState({
     question: "",
     label: "",
+    wordLimit: "",
+    placeholder: "",
   })
 
   useEffect(() => {
@@ -211,17 +213,26 @@ const AdminDashboard = () => {
   const addEssayQuestion = () => {
     if (essayQuestionForm.question.trim() && essayQuestionForm.label.trim()) {
       const uniqueId = `essay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
+      // Create field config JSON for essay questions
+      const fieldConfig = {
+        question: essayQuestionForm.question,
+        word_limit: essayQuestionForm.wordLimit ? Number.parseInt(essayQuestionForm.wordLimit) : null,
+        placeholder: essayQuestionForm.placeholder || "Enter your response here...",
+        type: "essay",
+      }
+
       const essayField = {
-        field_name: `essay_question_${uniqueId}`,
+        field_name: "essay_response", // Use a consistent field name for all essays
         label: essayQuestionForm.label,
         type: "textarea",
         required: true,
-        question: essayQuestionForm.question,
+        field_config: fieldConfig,
         unique_id: uniqueId,
       }
 
       setRequiredFields((prev) => [...prev, essayField])
-      setEssayQuestionForm({ question: "", label: "" })
+      setEssayQuestionForm({ question: "", label: "", wordLimit: "", placeholder: "" })
       setShowEssayQuestionModal(false)
       setSelectedFieldOption("")
     }
@@ -265,11 +276,12 @@ const AdminDashboard = () => {
       if (requiredFields.length > 0) {
         const fieldsToInsert = requiredFields.map((field) => ({
           award_id: awardData.id,
-          field_name: field.field_name,
+          field_name: field.unique_id ? `essay_response_${field.unique_id}` : field.field_name, // Use unique field name for essays
           label: field.label,
           type: field.type,
           required: field.required,
-          question: field.question || null,
+          question: field.field_config?.question || null,
+          field_config: field.field_config || null,
         }))
 
         const { error: fieldsError } = await supabase.from("award_required_fields").insert(fieldsToInsert)
@@ -299,7 +311,7 @@ const AdminDashboard = () => {
       })
       setRequiredFields([])
       setSelectedFieldOption("")
-      setEssayQuestionForm({ question: "", label: "" })
+      setEssayQuestionForm({ question: "", label: "", wordLimit: "", placeholder: "" })
       setCitizenshipInput("")
       setShowCreateAwardModal(false)
     } catch (error) {
@@ -377,7 +389,7 @@ const AdminDashboard = () => {
                     type="text"
                     value={awardForm.value}
                     onChange={(e) => handleInputChange("value", e.target.value)}
-                    placeholder="x award of $1000"
+                    placeholder="Award value"
                     
                   />
                 </div>
@@ -486,9 +498,11 @@ const AdminDashboard = () => {
                           <SelectValue placeholder="Select a field to add..." />
                         </SelectTrigger>
                         <SelectContent>
-                          {PREDEFINED_FIELDS.filter(
-                            (field) => !requiredFields.some((rf) => rf.field_name === field.field_name),
-                          ).map((field) => (
+                          {PREDEFINED_FIELDS.filter((field) => {
+                            // Allow multiple essay questions but prevent duplicate non-essay fields
+                            if (field.field_name === "essay_question") return true
+                            return !requiredFields.some((rf) => rf.field_name === field.field_name)
+                          }).map((field) => (
                             <SelectItem key={field.field_name} value={field.field_name}>
                               <div className="flex items-center gap-2">
                                 <span>{field.label}</span>
@@ -528,12 +542,23 @@ const AdminDashboard = () => {
                               <Badge variant="secondary" className="text-xs">
                                 {field.type}
                               </Badge>
+                              {field.field_config?.type === "essay" && (
+                                <Badge variant="outline" className="text-xs">
+                                  Essay
+                                </Badge>
+                              )}
                             </div>
                             <p className="text-xs text-muted-foreground font-mono mb-1">{field.field_name}</p>
-                            {field.question && (
+                            {field.field_config?.question && (
                               <div className="mt-2 p-2 bg-muted/50 rounded text-xs">
                                 <span className="font-medium text-muted-foreground">Question: </span>
-                                <span className="text-foreground">{field.question}</span>
+                                <span className="text-foreground">{field.field_config.question}</span>
+                                {field.field_config.word_limit && (
+                                  <div className="mt-1">
+                                    <span className="font-medium text-muted-foreground">Word Limit: </span>
+                                    <span className="text-foreground">{field.field_config.word_limit}</span>
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>
@@ -618,6 +643,30 @@ const AdminDashboard = () => {
                 />
               </div>
 
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="word-limit">Word Limit (optional)</Label>
+                  <Input
+                    id="word-limit"
+                    type="number"
+                    value={essayQuestionForm.wordLimit}
+                    onChange={(e) => setEssayQuestionForm((prev) => ({ ...prev, wordLimit: e.target.value }))}
+                    placeholder="500"
+                    min="1"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="placeholder">Placeholder Text</Label>
+                  <Input
+                    id="placeholder"
+                    value={essayQuestionForm.placeholder}
+                    onChange={(e) => setEssayQuestionForm((prev) => ({ ...prev, placeholder: e.target.value }))}
+                    placeholder="Enter your response..."
+                  />
+                </div>
+              </div>
+
               <div className="flex justify-end gap-2 pt-4 border-t">
                 <Button variant="outline" onClick={() => setShowEssayQuestionModal(false)}>
                   Cancel
@@ -634,7 +683,7 @@ const AdminDashboard = () => {
         </div>
       )}
 
-      {/* Main Content */}
+      {/* Main Content - Rest of the component remains the same */}
       <div className="relative z-10 max-w-7xl mx-auto p-6">
         {/* Header Section */}
         <div className="mb-8">
