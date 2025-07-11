@@ -15,7 +15,7 @@ import {
   AlertCircle,
   Save,
 } from "lucide-react";
-
+import { toast } from "sonner";
 interface RequiredField {
   id: string;
   field_name: string;
@@ -197,10 +197,10 @@ const ApplicationManagement: React.FC<ApplicationManagementProps> = ({
         setApplication(data);
       }
 
-      alert("Application saved as draft!");
+      toast("Application saved as draft!");
     } catch (error) {
       console.error("Error saving application:", error);
-      alert("Error saving application. Please try again.");
+      toast("Error saving application. Please try again.");
     } finally {
       setSaving(false);
     }
@@ -227,7 +227,7 @@ const ApplicationManagement: React.FC<ApplicationManagementProps> = ({
     });
 
     if (missingFields.length > 0) {
-      alert(
+      toast(
         `Please fill in all required fields: ${missingFields
           .map((f) => f.label)
           .join(", ")}`
@@ -249,7 +249,7 @@ const ApplicationManagement: React.FC<ApplicationManagementProps> = ({
     });
 
     if (wordLimitErrors.length > 0) {
-      alert(
+      toast(
         `Please reduce word count for: ${wordLimitErrors
           .map((f) => f.label)
           .join(", ")}`
@@ -288,11 +288,11 @@ const ApplicationManagement: React.FC<ApplicationManagementProps> = ({
         setApplication(data);
       }
 
-      alert("Application submitted successfully!");
+      toast("Application submitted successfully!");
       fetchApplication(); // Refresh to get updated status
     } catch (error) {
       console.error("Error submitting application:", error);
-      alert("Error submitting application. Please try again.");
+      toast("Error submitting application. Please try again.");
     } finally {
       setSubmitting(false);
     }
