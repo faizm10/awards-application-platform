@@ -350,12 +350,12 @@ const ApplicationManagement: React.FC<ApplicationManagementProps> = ({
             <FileText className="w-4 h-4" />
             {field.label}
             {field.required && <span className="text-red-500">*</span>}
-            {isEssay && (
+            {/* {isEssay && (
               <Badge variant="outline" className="text-xs">
                 Essay {field.id.slice(-4)}{" "}
-                {/* Show last 4 chars of ID for uniqueness */}
+                
               </Badge>
-            )}
+            )} */}
           </Label>
 
           {field.field_config?.question && (
