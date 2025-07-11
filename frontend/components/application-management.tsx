@@ -135,8 +135,7 @@ const ApplicationManagement: React.FC<ApplicationManagementProps> = ({
     const supabase = createClient()
     const fileExt = file.name.split(".").pop()
     const fileName = `${userId}/${awardId}/${fieldName}_${Date.now()}.${fileExt}`
-
-    const { data, error } = await supabase.storage.from("application-files").upload(fileName, file)
+    const { data, error } = await supabase.storage.from("applications").upload(fileName, file)
 
     if (error) {
       console.error("Error uploading file:", error)
