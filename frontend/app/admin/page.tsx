@@ -16,6 +16,7 @@ import {
   X,
   Plus,
 } from "lucide-react"
+import { toast } from "sonner"
 import { createClient } from "@/lib/supabase/client"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Button } from "@/components/ui/button"
@@ -268,7 +269,7 @@ const AdminDashboard = () => {
 
       if (awardError) {
         console.error("Error creating award:", awardError)
-        alert("Error creating award. Please try again.")
+        toast("Error creating award. Please try again.")
         return
       }
 
@@ -288,13 +289,13 @@ const AdminDashboard = () => {
 
         if (fieldsError) {
           console.error("Error creating required fields:", fieldsError)
-          alert("Award created but there was an error adding required fields.")
+          toast("Award created but there was an error adding required fields.")
           return
         }
       }
 
       console.log("Award and required fields created successfully")
-      alert("Award created successfully!")
+      toast("Award created successfully!")
 
       // Reset all forms
       setAwardForm({
@@ -316,7 +317,7 @@ const AdminDashboard = () => {
       setShowCreateAwardModal(false)
     } catch (error) {
       console.error("Error:", error)
-      alert("An unexpected error occurred.")
+      toast("An unexpected error occurred.")
     } finally {
       setIsSubmitting(false)
     }
