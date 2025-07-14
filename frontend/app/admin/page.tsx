@@ -1,6 +1,6 @@
-"use client"
-import type React from "react"
-import { useState, useEffect } from "react"
+"use client";
+import type React from "react";
+import { useState, useEffect } from "react";
 import {
   Users,
   FileText,
@@ -15,26 +15,41 @@ import {
   AlertCircle,
   X,
   Plus,
-} from "lucide-react"
-import { toast } from "sonner"
-import { createClient } from "@/lib/supabase/client"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
+  Trophy,
+} from "lucide-react";
+import { toast } from "sonner";
+import { createClient } from "@/lib/supabase/client";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 
 const AdminDashboard = () => {
-  const [activeTab, setActiveTab] = useState("overview")
-  const [searchTerm, setSearchTerm] = useState("")
-  const [filterStatus, setFilterStatus] = useState("all")
-  const [mounted, setMounted] = useState(false)
-  const [user, setUser] = useState<any>(null)
-  const [applications, setApplications] = useState<any[]>([])
-  const [showCreateAwardModal, setShowCreateAwardModal] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [activeTab, setActiveTab] = useState("overview");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [mounted, setMounted] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const [applications, setApplications] = useState<any[]>([]);
+  const [awards, setAwards] = useState<any[]>([]);
+  const [showCreateAwardModal, setShowCreateAwardModal] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Form state for creating new award
   const [awardForm, setAwardForm] = useState({
@@ -48,21 +63,21 @@ const AdminDashboard = () => {
     eligibility: "",
     application_method: "",
     category: "",
-  })
+  });
 
   // Add these new state variables after the existing state declarations (around line 25)
   const [requiredFields, setRequiredFields] = useState<
     Array<{
-      field_name: string
-      label: string
-      type: string
-      required: boolean
-      field_config?: any
-      unique_id?: string
+      field_name: string;
+      label: string;
+      type: string;
+      required: boolean;
+      field_config?: any;
+      unique_id?: string;
     }>
-  >([])
+  >([]);
 
-  const [selectedFieldOption, setSelectedFieldOption] = useState("")
+  const [selectedFieldOption, setSelectedFieldOption] = useState("");
 
   // Add this predefined fields configuration after the state declarations
   const PREDEFINED_FIELDS = [
@@ -70,49 +85,70 @@ const AdminDashboard = () => {
     { field_name: "last_name", label: "Student Last Name", type: "text" },
     { field_name: "student_id_text", label: "Student ID", type: "text" },
     { field_name: "major_program", label: "Major/Program", type: "text" },
-    { field_name: "credits_completed", label: "Credits Completed", type: "text" },
+    {
+      field_name: "credits_completed",
+      label: "Credits Completed",
+      type: "text",
+    },
     { field_name: "email", label: "Email Address", type: "text" },
     { field_name: "resume_url", label: "Upload Resume", type: "file" },
     { field_name: "letter_url", label: "Upload Letter", type: "file" },
-    { field_name: "community_letter_url", label: "Community Letter", type: "file" },
+    {
+      field_name: "community_letter_url",
+      label: "Community Letter",
+      type: "file",
+    },
     { field_name: "essay_question", label: "Essay Question", type: "textarea" },
-    { field_name: "travel_description", label: "Travel Description", type: "textarea" },
+    {
+      field_name: "travel_description",
+      label: "Travel Description",
+      type: "textarea",
+    },
     { field_name: "travel_benefit", label: "Travel Benefit", type: "textarea" },
     { field_name: "budget", label: "Budget Information", type: "textarea" },
-    { field_name: "international_intent_url", label: "International Intent Document", type: "file" },
-    { field_name: "certificate_url", label: "Upload Certificate", type: "file" },
-  ]
+    {
+      field_name: "international_intent_url",
+      label: "International Intent Document",
+      type: "file",
+    },
+    {
+      field_name: "certificate_url",
+      label: "Upload Certificate",
+      type: "file",
+    },
+  ];
 
-  const [citizenshipInput, setCitizenshipInput] = useState("")
-  const [showEssayQuestionModal, setShowEssayQuestionModal] = useState(false)
+  const [citizenshipInput, setCitizenshipInput] = useState("");
+  const [showEssayQuestionModal, setShowEssayQuestionModal] = useState(false);
   const [essayQuestionForm, setEssayQuestionForm] = useState({
     question: "",
     label: "",
     wordLimit: "",
     placeholder: "",
-  })
+  });
 
   useEffect(() => {
-    setMounted(true)
-  }, [])
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     const fetchUser = async () => {
-      const supabase = createClient()
+      const supabase = createClient();
       const {
         data: { user },
-      } = await supabase.auth.getUser()
-      setUser(user)
-    }
-    fetchUser()
-  }, [])
+      } = await supabase.auth.getUser();
+      setUser(user);
+    };
+    fetchUser();
+  }, []);
 
   useEffect(() => {
     const fetchApplications = async () => {
-      const supabase = createClient()
+      const supabase = createClient();
       const { data, error } = await supabase
         .from("applications")
-        .select(`
+        .select(
+          `
           *,
           student:student_id (
             full_name,
@@ -123,105 +159,144 @@ const AdminDashboard = () => {
             code,
             value
           )
-        `)
-        .order("created_at", { ascending: false })
+        `
+        )
+        .order("created_at", { ascending: false });
 
-      console.log("Fetched applications:", data)
+      console.log("Fetched applications:", data);
       if (error) {
-        console.error("Error fetching applications:", error)
+        console.error("Error fetching applications:", error);
       } else {
-        setApplications(data || [])
+        setApplications(data || []);
       }
-    }
-    fetchApplications()
-  }, [])
+    };
+    fetchApplications();
+  }, []);
+  useEffect(() => {
+    const fetchAwards = async () => {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("awards")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      console.log("Fetched awards:", data);
+      if (error) {
+        console.error("Error fetching awards:", error);
+      } else {
+        setAwards(data || []);
+      }
+    };
+    fetchAwards();
+  }, []);
 
   const getStatusIcon = (status: any) => {
     switch (status) {
       case "approved":
-        return <CheckCircle className="w-4 h-4 text-green-500" />
+        return <CheckCircle className="w-4 h-4 text-green-500" />;
       case "rejected":
-        return <XCircle className="w-4 h-4 text-red-500" />
+        return <XCircle className="w-4 h-4 text-red-500" />;
       case "pending":
-        return <Clock className="w-4 h-4 text-yellow-500" />
+        return <Clock className="w-4 h-4 text-yellow-500" />;
       default:
-        return <AlertCircle className="w-4 h-4 text-gray-500" />
+        return <AlertCircle className="w-4 h-4 text-gray-500" />;
     }
-  }
+  };
 
   const getStatusColor = (status: any) => {
     switch (status) {
       case "approved":
-        return "bg-green-100 text-green-800 border-green-200"
+        return "bg-green-100 text-green-800 border-green-200";
       case "rejected":
-        return "bg-red-100 text-red-800 border-red-200"
+        return "bg-red-100 text-red-800 border-red-200";
       case "pending":
-        return "bg-yellow-100 text-yellow-800 border-yellow-200"
+        return "bg-yellow-100 text-yellow-800 border-yellow-200";
       default:
-        return "bg-gray-100 text-gray-800 border-gray-200"
+        return "bg-gray-100 text-gray-800 border-gray-200";
     }
-  }
+  };
 
   const handleInputChange = (field: string, value: string) => {
     setAwardForm((prev) => ({
       ...prev,
       [field]: value,
-    }))
-  }
+    }));
+  };
 
   const addCitizenship = () => {
-    if (citizenshipInput.trim() && !awardForm.citizenship.includes(citizenshipInput.trim())) {
+    if (
+      citizenshipInput.trim() &&
+      !awardForm.citizenship.includes(citizenshipInput.trim())
+    ) {
       setAwardForm((prev) => ({
         ...prev,
         citizenship: [...prev.citizenship, citizenshipInput.trim()],
-      }))
-      setCitizenshipInput("")
+      }));
+      setCitizenshipInput("");
     }
-  }
+  };
 
   const removeCitizenship = (citizenship: string) => {
     setAwardForm((prev) => ({
       ...prev,
       citizenship: prev.citizenship.filter((c) => c !== citizenship),
-    }))
-  }
+    }));
+  };
 
   // Add these helper functions after the removeCitizenship function
   const addPredefinedField = () => {
     if (selectedFieldOption) {
-      const fieldConfig = PREDEFINED_FIELDS.find((f) => f.field_name === selectedFieldOption)
+      const fieldConfig = PREDEFINED_FIELDS.find(
+        (f) => f.field_name === selectedFieldOption
+      );
       if (fieldConfig) {
         if (fieldConfig.field_name === "essay_question") {
-          setShowEssayQuestionModal(true)
-        } else if (!requiredFields.some((f) => f.field_name === fieldConfig.field_name)) {
-          setRequiredFields((prev) => [...prev, { ...fieldConfig, required: true }])
-          setSelectedFieldOption("")
+          setShowEssayQuestionModal(true);
+        } else if (
+          !requiredFields.some((f) => f.field_name === fieldConfig.field_name)
+        ) {
+          setRequiredFields((prev) => [
+            ...prev,
+            { ...fieldConfig, required: true },
+          ]);
+          setSelectedFieldOption("");
         }
       }
     }
-  }
+  };
 
   const removeRequiredField = (identifier: string) => {
-    setRequiredFields((prev) => prev.filter((f) => (f.unique_id || f.field_name) !== identifier))
-  }
+    setRequiredFields((prev) =>
+      prev.filter((f) => (f.unique_id || f.field_name) !== identifier)
+    );
+  };
 
   const toggleFieldRequired = (identifier: string) => {
     setRequiredFields((prev) =>
-      prev.map((f) => ((f.unique_id || f.field_name) === identifier ? { ...f, required: !f.required } : f)),
-    )
-  }
+      prev.map((f) =>
+        (f.unique_id || f.field_name) === identifier
+          ? { ...f, required: !f.required }
+          : f
+      )
+    );
+  };
 
   const addEssayQuestion = () => {
     if (essayQuestionForm.question.trim() && essayQuestionForm.label.trim()) {
-      const uniqueId = `essay_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+      const uniqueId = `essay_${Date.now()}_${Math.random()
+        .toString(36)
+        .substr(2, 9)}`;
 
       // Create field config JSON for essay questions
       const fieldConfig = {
         question: essayQuestionForm.question,
-        word_limit: essayQuestionForm.wordLimit ? Number.parseInt(essayQuestionForm.wordLimit) : null,
-        placeholder: essayQuestionForm.placeholder || "Enter your response here...",
+        word_limit: essayQuestionForm.wordLimit
+          ? Number.parseInt(essayQuestionForm.wordLimit)
+          : null,
+        placeholder:
+          essayQuestionForm.placeholder || "Enter your response here...",
         type: "essay",
-      }
+      };
 
       const essayField = {
         field_name: "essay_response", // Use a consistent field name for all essays
@@ -230,22 +305,27 @@ const AdminDashboard = () => {
         required: true,
         field_config: fieldConfig,
         unique_id: uniqueId,
-      }
+      };
 
-      setRequiredFields((prev) => [...prev, essayField])
-      setEssayQuestionForm({ question: "", label: "", wordLimit: "", placeholder: "" })
-      setShowEssayQuestionModal(false)
-      setSelectedFieldOption("")
+      setRequiredFields((prev) => [...prev, essayField]);
+      setEssayQuestionForm({
+        question: "",
+        label: "",
+        wordLimit: "",
+        placeholder: "",
+      });
+      setShowEssayQuestionModal(false);
+      setSelectedFieldOption("");
     }
-  }
+  };
 
   // Update the handleSubmitAward function to include the required fields creation
   const handleSubmitAward = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsSubmitting(true)
+    e.preventDefault();
+    setIsSubmitting(true);
 
     try {
-      const supabase = createClient()
+      const supabase = createClient();
 
       // First, create the award
       const { data: awardData, error: awardError } = await supabase
@@ -265,37 +345,41 @@ const AdminDashboard = () => {
           },
         ])
         .select()
-        .single()
+        .single();
 
       if (awardError) {
-        console.error("Error creating award:", awardError)
-        toast("Error creating award. Please try again.")
-        return
+        console.error("Error creating award:", awardError);
+        toast("Error creating award. Please try again.");
+        return;
       }
 
       // Then, create the required fields if any
       if (requiredFields.length > 0) {
         const fieldsToInsert = requiredFields.map((field) => ({
           award_id: awardData.id,
-          field_name: field.unique_id ? `essay_response_${field.unique_id}` : field.field_name, // Use unique field name for essays
+          field_name: field.unique_id
+            ? `essay_response_${field.unique_id}`
+            : field.field_name, // Use unique field name for essays
           label: field.label,
           type: field.type,
           required: field.required,
           question: field.field_config?.question || null,
           field_config: field.field_config || null,
-        }))
+        }));
 
-        const { error: fieldsError } = await supabase.from("award_required_fields").insert(fieldsToInsert)
+        const { error: fieldsError } = await supabase
+          .from("award_required_fields")
+          .insert(fieldsToInsert);
 
         if (fieldsError) {
-          console.error("Error creating required fields:", fieldsError)
-          toast("Award created but there was an error adding required fields.")
-          return
+          console.error("Error creating required fields:", fieldsError);
+          toast("Award created but there was an error adding required fields.");
+          return;
         }
       }
 
-      console.log("Award and required fields created successfully")
-      toast("Award created successfully!")
+      console.log("Award and required fields created successfully");
+      toast("Award created successfully!");
 
       // Reset all forms
       setAwardForm({
@@ -309,32 +393,44 @@ const AdminDashboard = () => {
         eligibility: "",
         application_method: "",
         category: "",
-      })
-      setRequiredFields([])
-      setSelectedFieldOption("")
-      setEssayQuestionForm({ question: "", label: "", wordLimit: "", placeholder: "" })
-      setCitizenshipInput("")
-      setShowCreateAwardModal(false)
+      });
+      setRequiredFields([]);
+      setSelectedFieldOption("");
+      setEssayQuestionForm({
+        question: "",
+        label: "",
+        wordLimit: "",
+        placeholder: "",
+      });
+      setCitizenshipInput("");
+      setShowCreateAwardModal(false);
     } catch (error) {
-      console.error("Error:", error)
-      toast("An unexpected error occurred.")
+      console.error("Error:", error);
+      toast("An unexpected error occurred.");
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
-  if (!mounted) return <div className="min-h-screen bg-background animate-pulse" />
+  if (!mounted)
+    return <div className="min-h-screen bg-background animate-pulse" />;
 
   return (
     <div className="min-h-screen bg-background relative overflow-hidden">
       {/* Animated Background Elements */}
       <div className="absolute inset-0 geometric-bg"></div>
-      <div className="floating-element animate-wave" style={{ top: "10%", right: "15%", animationDelay: "0s" }}></div>
+      <div
+        className="floating-element animate-wave"
+        style={{ top: "10%", right: "15%", animationDelay: "0s" }}
+      ></div>
       <div
         className="floating-element animate-wave"
         style={{ bottom: "30%", left: "10%", animationDelay: "1.5s" }}
       ></div>
-      <div className="floating-element animate-wave" style={{ top: "60%", right: "25%", animationDelay: "3s" }}></div>
+      <div
+        className="floating-element animate-wave"
+        style={{ top: "60%", right: "25%", animationDelay: "3s" }}
+      ></div>
 
       {/* Create Award Modal */}
       {showCreateAwardModal && (
@@ -342,7 +438,11 @@ const AdminDashboard = () => {
           <div className="bg-background rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b">
               <h2 className="text-2xl font-bold">Create New Award</h2>
-              <Button variant="ghost" size="icon" onClick={() => setShowCreateAwardModal(false)}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowCreateAwardModal(false)}
+              >
                 <X className="w-4 h-4" />
               </Button>
             </div>
@@ -391,7 +491,6 @@ const AdminDashboard = () => {
                     value={awardForm.value}
                     onChange={(e) => handleInputChange("value", e.target.value)}
                     placeholder="Award value"
-                    
                   />
                 </div>
               </div>
@@ -403,13 +502,20 @@ const AdminDashboard = () => {
                     id="deadline"
                     type="date"
                     value={awardForm.deadline}
-                    onChange={(e) => handleInputChange("deadline", e.target.value)}
+                    onChange={(e) =>
+                      handleInputChange("deadline", e.target.value)
+                    }
                   />
                 </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="category">Category</Label>
-                  <Select value={awardForm.category} onValueChange={(value) => handleInputChange("category", value)}>
+                  <Select
+                    value={awardForm.category}
+                    onValueChange={(value) =>
+                      handleInputChange("category", value)
+                    }
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
@@ -433,18 +539,26 @@ const AdminDashboard = () => {
                     placeholder="Add citizenship requirement"
                     onKeyPress={(e) => {
                       if (e.key === "Enter") {
-                        e.preventDefault()
-                        addCitizenship()
+                        e.preventDefault();
+                        addCitizenship();
                       }
                     }}
                   />
-                  <Button type="button" onClick={addCitizenship} variant="outline">
+                  <Button
+                    type="button"
+                    onClick={addCitizenship}
+                    variant="outline"
+                  >
                     <Plus className="w-4 h-4" />
                   </Button>
                 </div>
                 <div className="flex flex-wrap gap-2 mt-2">
                   {awardForm.citizenship.map((citizenship, index) => (
-                    <Badge key={index} variant="secondary" className="flex items-center gap-1">
+                    <Badge
+                      key={index}
+                      variant="secondary"
+                      className="flex items-center gap-1"
+                    >
                       {citizenship}
                       <button
                         type="button"
@@ -463,7 +577,9 @@ const AdminDashboard = () => {
                 <Textarea
                   id="description"
                   value={awardForm.description}
-                  onChange={(e) => handleInputChange("description", e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("description", e.target.value)
+                  }
                   placeholder="Award description"
                   rows={3}
                 />
@@ -474,7 +590,9 @@ const AdminDashboard = () => {
                 <Textarea
                   id="eligibility"
                   value={awardForm.eligibility}
-                  onChange={(e) => handleInputChange("eligibility", e.target.value)}
+                  onChange={(e) =>
+                    handleInputChange("eligibility", e.target.value)
+                  }
                   placeholder="Eligibility requirements"
                   rows={3}
                 />
@@ -483,9 +601,12 @@ const AdminDashboard = () => {
               {/* Application Form Fields Section */}
               <div className="space-y-4 border-t pt-6">
                 <div className="space-y-2">
-                  <h4 className="text-lg font-semibold">Application Form Fields</h4>
+                  <h4 className="text-lg font-semibold">
+                    Application Form Fields
+                  </h4>
                   <p className="text-sm text-muted-foreground">
-                    Select the fields that applicants need to fill out for this award.
+                    Select the fields that applicants need to fill out for this
+                    award.
                   </p>
                 </div>
 
@@ -494,17 +615,26 @@ const AdminDashboard = () => {
                   <h5 className="font-medium">Add Required Field</h5>
                   <div className="flex gap-2">
                     <div className="flex-1">
-                      <Select value={selectedFieldOption} onValueChange={setSelectedFieldOption}>
+                      <Select
+                        value={selectedFieldOption}
+                        onValueChange={setSelectedFieldOption}
+                      >
                         <SelectTrigger>
                           <SelectValue placeholder="Select a field to add..." />
                         </SelectTrigger>
                         <SelectContent>
                           {PREDEFINED_FIELDS.filter((field) => {
                             // Allow multiple essay questions but prevent duplicate non-essay fields
-                            if (field.field_name === "essay_question") return true
-                            return !requiredFields.some((rf) => rf.field_name === field.field_name)
+                            if (field.field_name === "essay_question")
+                              return true;
+                            return !requiredFields.some(
+                              (rf) => rf.field_name === field.field_name
+                            );
                           }).map((field) => (
-                            <SelectItem key={field.field_name} value={field.field_name}>
+                            <SelectItem
+                              key={field.field_name}
+                              value={field.field_name}
+                            >
                               <div className="flex items-center gap-2">
                                 <span>{field.label}</span>
                                 <Badge variant="outline" className="text-xs">
@@ -530,7 +660,9 @@ const AdminDashboard = () => {
                 {/* Display Added Fields */}
                 {requiredFields.length > 0 && (
                   <div className="space-y-3">
-                    <h5 className="font-medium">Required Fields ({requiredFields.length})</h5>
+                    <h5 className="font-medium">
+                      Required Fields ({requiredFields.length})
+                    </h5>
                     <div className="space-y-2 max-h-60 overflow-y-auto">
                       {requiredFields.map((field) => (
                         <div
@@ -549,15 +681,25 @@ const AdminDashboard = () => {
                                 </Badge>
                               )}
                             </div>
-                            <p className="text-xs text-muted-foreground font-mono mb-1">{field.field_name}</p>
+                            <p className="text-xs text-muted-foreground font-mono mb-1">
+                              {field.field_name}
+                            </p>
                             {field.field_config?.question && (
                               <div className="mt-2 p-2 bg-muted/50 rounded text-xs">
-                                <span className="font-medium text-muted-foreground">Question: </span>
-                                <span className="text-foreground">{field.field_config.question}</span>
+                                <span className="font-medium text-muted-foreground">
+                                  Question:{" "}
+                                </span>
+                                <span className="text-foreground">
+                                  {field.field_config.question}
+                                </span>
                                 {field.field_config.word_limit && (
                                   <div className="mt-1">
-                                    <span className="font-medium text-muted-foreground">Word Limit: </span>
-                                    <span className="text-foreground">{field.field_config.word_limit}</span>
+                                    <span className="font-medium text-muted-foreground">
+                                      Word Limit:{" "}
+                                    </span>
+                                    <span className="text-foreground">
+                                      {field.field_config.word_limit}
+                                    </span>
                                   </div>
                                 )}
                               </div>
@@ -568,7 +710,11 @@ const AdminDashboard = () => {
                               <input
                                 type="checkbox"
                                 checked={field.required}
-                                onChange={() => toggleFieldRequired(field.unique_id || field.field_name)}
+                                onChange={() =>
+                                  toggleFieldRequired(
+                                    field.unique_id || field.field_name
+                                  )
+                                }
                                 className="rounded"
                               />
                               Required
@@ -577,7 +723,11 @@ const AdminDashboard = () => {
                               type="button"
                               variant="ghost"
                               size="sm"
-                              onClick={() => removeRequiredField(field.unique_id || field.field_name)}
+                              onClick={() =>
+                                removeRequiredField(
+                                  field.unique_id || field.field_name
+                                )
+                              }
                               className="text-destructive hover:text-destructive"
                             >
                               <X className="w-4 h-4" />
@@ -593,13 +743,20 @@ const AdminDashboard = () => {
                   <div className="text-center py-8 text-muted-foreground">
                     <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
                     <p className="text-sm">No fields added yet</p>
-                    <p className="text-xs">Select fields from the dropdown above to build your application form</p>
+                    <p className="text-xs">
+                      Select fields from the dropdown above to build your
+                      application form
+                    </p>
                   </div>
                 )}
               </div>
 
               <div className="flex justify-end gap-4 pt-4 border-t">
-                <Button type="button" variant="outline" onClick={() => setShowCreateAwardModal(false)}>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowCreateAwardModal(false)}
+                >
                   Cancel
                 </Button>
                 <Button type="submit" disabled={isSubmitting}>
@@ -617,7 +774,11 @@ const AdminDashboard = () => {
           <div className="bg-background rounded-lg shadow-xl max-w-md w-full">
             <div className="flex items-center justify-between p-6 border-b">
               <h3 className="text-lg font-semibold">Add Essay Question</h3>
-              <Button variant="ghost" size="icon" onClick={() => setShowEssayQuestionModal(false)}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowEssayQuestionModal(false)}
+              >
                 <X className="w-4 h-4" />
               </Button>
             </div>
@@ -628,7 +789,12 @@ const AdminDashboard = () => {
                 <Input
                   id="essay-label"
                   value={essayQuestionForm.label}
-                  onChange={(e) => setEssayQuestionForm((prev) => ({ ...prev, label: e.target.value }))}
+                  onChange={(e) =>
+                    setEssayQuestionForm((prev) => ({
+                      ...prev,
+                      label: e.target.value,
+                    }))
+                  }
                   placeholder="e.g., Personal Statement, Leadership Essay"
                 />
               </div>
@@ -638,7 +804,12 @@ const AdminDashboard = () => {
                 <Textarea
                   id="essay-question"
                   value={essayQuestionForm.question}
-                  onChange={(e) => setEssayQuestionForm((prev) => ({ ...prev, question: e.target.value }))}
+                  onChange={(e) =>
+                    setEssayQuestionForm((prev) => ({
+                      ...prev,
+                      question: e.target.value,
+                    }))
+                  }
                   placeholder="Enter the essay question or prompt..."
                   rows={4}
                 />
@@ -651,7 +822,12 @@ const AdminDashboard = () => {
                     id="word-limit"
                     type="number"
                     value={essayQuestionForm.wordLimit}
-                    onChange={(e) => setEssayQuestionForm((prev) => ({ ...prev, wordLimit: e.target.value }))}
+                    onChange={(e) =>
+                      setEssayQuestionForm((prev) => ({
+                        ...prev,
+                        wordLimit: e.target.value,
+                      }))
+                    }
                     placeholder="500"
                     min="1"
                   />
@@ -662,19 +838,30 @@ const AdminDashboard = () => {
                   <Input
                     id="placeholder"
                     value={essayQuestionForm.placeholder}
-                    onChange={(e) => setEssayQuestionForm((prev) => ({ ...prev, placeholder: e.target.value }))}
+                    onChange={(e) =>
+                      setEssayQuestionForm((prev) => ({
+                        ...prev,
+                        placeholder: e.target.value,
+                      }))
+                    }
                     placeholder="Enter your response..."
                   />
                 </div>
               </div>
 
               <div className="flex justify-end gap-2 pt-4 border-t">
-                <Button variant="outline" onClick={() => setShowEssayQuestionModal(false)}>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowEssayQuestionModal(false)}
+                >
                   Cancel
                 </Button>
                 <Button
                   onClick={addEssayQuestion}
-                  disabled={!essayQuestionForm.question.trim() || !essayQuestionForm.label.trim()}
+                  disabled={
+                    !essayQuestionForm.question.trim() ||
+                    !essayQuestionForm.label.trim()
+                  }
                 >
                   Add Essay Question
                 </Button>
@@ -690,7 +877,9 @@ const AdminDashboard = () => {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
             <div className="animate-slide-in-left">
-              <p className="text-xl text-muted-foreground">Admin Dashboard Overview</p>
+              <p className="text-xl text-muted-foreground">
+                Admin Dashboard Overview
+              </p>
             </div>
             <div className="animate-slide-in-right flex items-center gap-4">
               <div className="hexagon neon-glow"></div>
@@ -708,6 +897,7 @@ const AdminDashboard = () => {
             {[
               { id: "overview", label: "Overview", icon: TrendingUp },
               { id: "applications", label: "Applications", icon: FileText },
+              { id: "awards", label: "Awards", icon: Trophy },
               { id: "admins", label: "Admin Users", icon: Users },
             ].map((tab) => (
               <button
@@ -731,17 +921,26 @@ const AdminDashboard = () => {
           <div className="space-y-8">
             {/* Quick Actions */}
             <div className="card-modern p-6">
-              <h3 className="text-xl font-bold mb-4 text-foreground">Quick Actions</h3>
+              <h3 className="text-xl font-bold mb-4 text-foreground">
+                Quick Actions
+              </h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <button className="btn-primary p-4 rounded-lg text-left" onClick={() => setShowCreateAwardModal(true)}>
+                <button
+                  className="btn-primary p-4 rounded-lg text-left"
+                  onClick={() => setShowCreateAwardModal(true)}
+                >
                   <Award className="w-6 h-6 mb-2" />
                   <div className="font-medium">Create New Award</div>
-                  <div className="text-sm opacity-80">Add scholarship or grant</div>
+                  <div className="text-sm opacity-80">
+                    Add scholarship or grant
+                  </div>
                 </button>
                 <button className="btn-secondary p-4 rounded-lg text-left">
                   <FileText className="w-6 h-6 mb-2" />
                   <div className="font-medium">Review Applications</div>
-                  <div className="text-sm opacity-80">Process pending requests</div>
+                  <div className="text-sm opacity-80">
+                    Process pending requests
+                  </div>
                 </button>
                 <button className="btn-secondary p-4 rounded-lg text-left">
                   <Users className="w-6 h-6 mb-2" />
@@ -753,18 +952,29 @@ const AdminDashboard = () => {
 
             {/* Recent Activity */}
             <div className="card-modern p-6">
-              <h3 className="text-xl font-bold mb-4 text-foreground">Recent Activity</h3>
+              <h3 className="text-xl font-bold mb-4 text-foreground">
+                Recent Activity
+              </h3>
               <div className="space-y-4">
                 {applications.map((app: any) => (
-                  <div key={app.id} className="flex items-center gap-4 p-4 bg-muted/30 rounded-lg">
+                  <div
+                    key={app.id}
+                    className="flex items-center gap-4 p-4 bg-muted/30 rounded-lg"
+                  >
                     {getStatusIcon(app.status)}
                     <div className="flex-1">
                       <p className="font-medium">
                         {app.student?.full_name} applied for {app.award?.title}
                       </p>
-                      <p className="text-sm text-muted-foreground">{new Date(app.created_at).toLocaleDateString()}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {new Date(app.created_at).toLocaleDateString()}
+                      </p>
                     </div>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(app.status)}`}>
+                    <span
+                      className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(
+                        app.status
+                      )}`}
+                    >
                       {app.status}
                     </span>
                   </div>
@@ -807,38 +1017,63 @@ const AdminDashboard = () => {
 
             {/* Applications Table */}
             <div className="card-modern p-6">
-              <h3 className="text-xl font-bold mb-4 text-foreground">Applications</h3>
+              <h3 className="text-xl font-bold mb-4 text-foreground">
+                Applications
+              </h3>
               <div className="overflow-x-auto">
                 <Table className="w-full text-sm">
                   <TableHeader>
                     <TableRow className="border-b border-border">
-                      <TableHead className="text-left py-3 px-4 font-medium">Student</TableHead>
-                      <TableHead className="text-left py-3 px-4 font-medium">Award</TableHead>
-                      <TableHead className="text-left py-3 px-4 font-medium">Status</TableHead>
-                      <TableHead className="text-left py-3 px-4 font-medium">Submitted</TableHead>
-                      <TableHead className="text-left py-3 px-4 font-medium">Value</TableHead>
-                      <TableHead className="text-left py-3 px-4 font-medium">Actions</TableHead>
+                      <TableHead className="text-left py-3 px-4 font-medium">
+                        Student
+                      </TableHead>
+                      <TableHead className="text-left py-3 px-4 font-medium">
+                        Award
+                      </TableHead>
+                      <TableHead className="text-left py-3 px-4 font-medium">
+                        Status
+                      </TableHead>
+                      <TableHead className="text-left py-3 px-4 font-medium">
+                        Submitted
+                      </TableHead>
+                      <TableHead className="text-left py-3 px-4 font-medium">
+                        Value
+                      </TableHead>
+                      <TableHead className="text-left py-3 px-4 font-medium">
+                        Actions
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {applications.map((app: any) => (
-                      <TableRow key={app.id} className="border-b border-border hover:bg-muted/30 transition-colors">
+                      <TableRow
+                        key={app.id}
+                        className="border-b border-border hover:bg-muted/30 transition-colors"
+                      >
                         <TableCell className="py-3 px-4">
                           <div>
-                            <div className="font-medium">{app.student?.full_name}</div>
-                            <div className="text-xs text-muted-foreground">{app.student?.email}</div>
+                            <div className="font-medium">
+                              {app.student?.full_name}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {app.student?.email}
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell className="py-3 px-4">
                           <div>
-                            <div className="font-medium">{app.award?.title}</div>
-                            <div className="text-xs text-muted-foreground">{app.award?.code}</div>
+                            <div className="font-medium">
+                              {app.award?.title}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {app.award?.code}
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell className="py-3 px-4">
                           <span
                             className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(
-                              app.status,
+                              app.status
                             )}`}
                           >
                             {getStatusIcon(app.status)}
@@ -846,10 +1081,14 @@ const AdminDashboard = () => {
                           </span>
                         </TableCell>
                         <TableCell className="py-3 px-4">
-                          {app.submitted_at ? new Date(app.submitted_at).toLocaleDateString() : "-"}
+                          {app.submitted_at
+                            ? new Date(app.submitted_at).toLocaleDateString()
+                            : "-"}
                         </TableCell>
                         <TableCell className="py-3 px-4">
-                          <span className="font-medium">${app.award?.value?.toLocaleString()}</span>
+                          <span className="font-medium">
+                            ${app.award?.value?.toLocaleString()}
+                          </span>
                         </TableCell>
                         <TableCell className="py-3 px-4">
                           <button className="p-1 hover:bg-muted rounded">
@@ -864,9 +1103,82 @@ const AdminDashboard = () => {
             </div>
           </div>
         )}
+        {activeTab === "awards" && (
+          <div className="space-y-6">
+            {/* Search and Filter */}
+            <div className="card-modern p-6">
+              <div className="flex flex-col sm:flex-row gap-4">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <input
+                    type="text"
+                    placeholder="Search awards..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Awards Table */}
+            <div className="card-modern p-6">
+              <h3 className="text-xl font-bold mb-4 text-foreground">
+                Awards List
+              </h3>
+              <div className="overflow-x-auto">
+                <Table className="w-full text-sm">
+                  <TableHeader>
+                    <TableRow className="border-b border-border">
+                      <TableHead className="text-left py-3 px-4 font-medium">
+                        Title
+                      </TableHead>
+                      <TableHead className="text-left py-3 px-4 font-medium">
+                        Value
+                      </TableHead>
+                      <TableHead className="text-left py-3 px-4 font-medium">
+                        Category
+                      </TableHead>
+                      <TableHead className="text-left py-3 px-4 font-medium">
+                        Deadline
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {awards.map((app: any) => (
+                      <TableRow
+                        key={app.id}
+                        className="border-b border-border hover:bg-muted/30 transition-colors"
+                      >
+                        <TableCell className="py-3 px-4">
+                          <div>
+                            <div className="font-medium">{app.title}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-3 px-4">
+                          <div>
+                            <div className="font-medium">{app.value}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-3 px-4">
+                          {app.category}
+                        </TableCell>
+                        <TableCell className="py-3 px-4">
+                          {app.deadline
+                            ? new Date(app.deadline).toLocaleDateString()
+                            : "-"}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default AdminDashboard
+export default AdminDashboard;
