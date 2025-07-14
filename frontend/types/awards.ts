@@ -16,4 +16,13 @@ export type Award = {
     updated_at: string
     created_by: string | null
   }
+
+export type Profile = {
+  id: string;
+  email: string;
+  full_name?: string;
+  user_type: string;
+  created_at: string;
+  updated_at: string;
+};
   

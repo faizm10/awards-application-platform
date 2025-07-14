@@ -39,6 +39,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { LogoutButton } from "@/components/logout-button";
+import AdminUsersTable from "@/components/AdminUsersTable";
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
@@ -887,6 +889,7 @@ const AdminDashboard = () => {
                 <Search className="w-4 h-4" />
                 Find Awards
               </button>
+              <LogoutButton />
             </div>
           </div>
         </div>
@@ -1175,6 +1178,9 @@ const AdminDashboard = () => {
               </div>
             </div>
           </div>
+        )}
+        {activeTab === "admins" && (
+          <AdminUsersTable />
         )}
       </div>
     </div>

@@ -21,7 +21,6 @@ export async function AuthButton() {
           <span className="text-sm font-semibold text-foreground">
             {user.email?.split('@')[0]}
           </span>
-          {/* <div className="text-xs text-muted-foreground">Student</div> */}
         </div>
       </div>
       <LogoutButton />

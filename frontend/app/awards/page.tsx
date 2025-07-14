@@ -1,36 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import {
-  Award,
-  Search,
-  Filter,
-  Clock,
-  DollarSign,
-  TrendingUp,
-  Calendar,
-  Users,
-  Sparkles,
-} from "lucide-react";
+import { Award, Search, Filter, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AwardsList } from "@/components/awards";
 import { NavbarDemo } from "@/components/womp";
-import Link from "next/link";
 
 function AwardsPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All Categories");
-
-  const categories = [
-    "All Categories",
-    "Academic Excellence",
-    "Research",
-    "Leadership",
-    "Arts",
-    "International",
-    "Technology",
-  ];
 
   const handleSearch = (value: string) => {
     setSearchTerm(value);
@@ -56,12 +35,9 @@ function AwardsPage() {
         {/* Hero Section */}
         <div className="mb-16">
           <div className="text-center mb-12 animate-slide-in-up">
-           
-
             <h1 className="text-6xl md:text-7xl font-bold text-foreground mb-6">
               Browse <span className="gradient-text">Awards</span>
             </h1>
-
           </div>
 
           {/* Search Section */}
@@ -83,27 +59,6 @@ function AwardsPage() {
                     <Filter className="mr-2 h-5 w-5" />
                     Advanced Filters
                   </Button>
-                </div>
-
-                {/* Categories */}
-                <div className="flex flex-wrap gap-3">
-                  {categories.map((category, index) => (
-                    <Button
-                      key={index}
-                      variant={
-                        selectedCategory === category ? "default" : "outline"
-                      }
-                      size="sm"
-                      onClick={() => handleCategoryChange(category)}
-                      className={`transition-all duration-300 ${
-                        selectedCategory === category
-                          ? "btn-primary shadow-lg shadow-primary/25"
-                          : "btn-secondary hover:scale-105"
-                      }`}
-                    >
-                      {category}
-                    </Button>
-                  ))}
                 </div>
               </div>
             </div>
@@ -142,7 +97,7 @@ function AwardsPage() {
             <div className="morphing-shape" />
           </div>
 
-          <AwardsList />
+          <AwardsList searchTerm={searchTerm} />
         </div>
       </div>
     </div>

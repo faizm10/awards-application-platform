@@ -98,7 +98,7 @@ function AwardCard({ award }: { award: Award }) {
   );
 }
 
-export function AwardsList() {
+export function AwardsList({ searchTerm = "" }: { searchTerm?: string }) {
   // const { data: awards, isLoading, error } = useAwards(); // Commented out GraphQL/React Query
   const [awards, setAwards] = useState<Award[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -124,6 +124,19 @@ export function AwardsList() {
     };
     fetchAwards();
   }, []);
+
+  // Filter awards by search term
+  const filteredAwards = (awards || []).filter((award) => {
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      award.title.toLowerCase().includes(term) ||
+      award.donor.toLowerCase().includes(term) ||
+      award.code.toLowerCase().includes(term) ||
+      award.description.toLowerCase().includes(term) ||
+      award.eligibility.toLowerCase().includes(term)
+    );
+  });
 
   if (isLoading) {
     return (
@@ -197,12 +210,12 @@ export function AwardsList() {
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-900">Available Awards</h2>
         <span className="text-sm text-gray-600">
-          {awards.length} awards found
+          {filteredAwards.length} awards found
         </span>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-1">
-        {awards.map((award) => (
+        {filteredAwards.map((award) => (
           <Link key={award.id} href={`/awards/${award.code}`} className="block hover:shadow-lg transition-shadow">
             <AwardCard award={award} />
           </Link>

@@ -16,6 +16,7 @@ import {
   Save,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useRouter, usePathname } from "next/navigation";
 interface RequiredField {
   id: string;
   field_name: string;
@@ -435,13 +436,17 @@ const ApplicationManagement: React.FC<ApplicationManagementProps> = ({
   }
 
   if (!user) {
+    const router = useRouter();
+    const pathname = usePathname();
     return (
       <section className="card-modern p-6">
         <h2 className="text-xl font-bold mb-4">Apply for This Award</h2>
         <p className="text-muted-foreground mb-4">
           Please sign in to apply for this award.
         </p>
-        <Button>Sign In</Button>
+        <Button onClick={() => router.push(`/auth/login?redirect=${encodeURIComponent(pathname)}`)}>
+          Sign In
+        </Button>
       </section>
     );
   }

@@ -1,6 +1,5 @@
 import { AuthButton } from "@/components/auth-button";
 import { ThemeSwitcher } from "@/components/theme-switcher";
-import { hasEnvVars } from "@/lib/utils";
 import Link from "next/link";
 import { Home, Award, User, Settings, Search, BookOpen } from "lucide-react";
 
