@@ -41,6 +41,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { LogoutButton } from "@/components/logout-button";
 import AdminUsersTable from "@/components/AdminUsersTable";
+import { useRouter } from "next/navigation";
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
@@ -129,6 +130,8 @@ const AdminDashboard = () => {
     placeholder: "",
   });
 
+  const router = useRouter();
+
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -140,6 +143,17 @@ const AdminDashboard = () => {
         data: { user },
       } = await supabase.auth.getUser();
       setUser(user);
+      if (user) {
+        // Fetch profile to check user_type
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("user_type")
+          .eq("id", user.id)
+          .single();
+        if (profile?.user_type === "reviewer") {
+          router.replace("/reviewer");
+        }
+      }
     };
     fetchUser();
   }, []);

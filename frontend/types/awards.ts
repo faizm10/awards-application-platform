@@ -24,5 +24,6 @@ export type Profile = {
   user_type: string;
   created_at: string;
   updated_at: string;
+  committee?: string;
 };
   

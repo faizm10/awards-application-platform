@@ -14,6 +14,9 @@ export default async function dashboardPage() {
   if (profile && profile.user_type === "admin") {
     redirect("/admin");
   }
+  if (profile && profile.user_type === "reviewer") {
+    redirect("/reviewer");
+  }
 
   return (
     <div className="min-h-screen geometric-bg">

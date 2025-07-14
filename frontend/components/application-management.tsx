@@ -444,7 +444,11 @@ const ApplicationManagement: React.FC<ApplicationManagementProps> = ({
         <p className="text-muted-foreground mb-4">
           Please sign in to apply for this award.
         </p>
-        <Button onClick={() => router.push(`/auth/login?redirect=${encodeURIComponent(pathname)}`)}>
+        <Button
+          onClick={() =>
+            router.push(`/auth/login?redirect=${encodeURIComponent(pathname)}`)
+          }
+        >
           Sign In
         </Button>
       </section>
