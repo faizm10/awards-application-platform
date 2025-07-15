@@ -271,13 +271,17 @@ const ApplicationManagement: React.FC<ApplicationManagementProps> = ({
         ...formData,
       };
 
+      let updatedApp;
       if (application) {
-        const { error } = await supabase
+        const { data, error } = await supabase
           .from("applications")
           .update(applicationData)
-          .eq("id", application.id);
+          .eq("id", application.id)
+          .select()
+          .single();
 
         if (error) throw error;
+        updatedApp = data;
       } else {
         const { data, error } = await supabase
           .from("applications")
@@ -286,11 +290,12 @@ const ApplicationManagement: React.FC<ApplicationManagementProps> = ({
           .single();
 
         if (error) throw error;
-        setApplication(data);
+        updatedApp = data;
       }
 
+      setApplication(updatedApp); // <-- update state immediately
       toast("Application submitted successfully!");
-      fetchApplication(); // Refresh to get updated status
+      // Optionally, call fetchApplication() if you want to re-fetch from DB
     } catch (error) {
       console.error("Error submitting application:", error);
       toast("Error submitting application. Please try again.");

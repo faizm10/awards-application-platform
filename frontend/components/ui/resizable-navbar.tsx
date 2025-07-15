@@ -235,7 +235,7 @@ export const NavbarLogo = () => {
       href="/"
       className="relative z-20 mr-4 flex items-center space-x-2 px-2 py-1 text-sm font-normal text-black"
     >
-      <img src="/LANGlogo.png" alt="logo" width={100} height={100} />
+      <img src="/LANGlogo.png" alt="logo" width={150} height={150} />
       {/* <span className="font-medium text-black dark:text-white">University of Guelph</span> */}
     </a>
   );
