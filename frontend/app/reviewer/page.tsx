@@ -29,6 +29,8 @@ import {
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { toast } from 'sonner';
+import { LogoutButton } from "@/components/logout-button";
 
 const Reviewer = () => {
   const [user, setUser] = useState<any>(null)
@@ -44,6 +46,7 @@ const Reviewer = () => {
   const [rating, setRating] = useState(0)
   const [comments, setComments] = useState('')
   const [viewMode, setViewMode] = useState<'list' | 'details'>('list')
+  const [submittingReview, setSubmittingReview] = useState(false);
 
   useEffect(() => {
     const fetchUserAndApplications = async () => {
@@ -108,23 +111,35 @@ const Reviewer = () => {
   }
 
   const handleSubmitReview = async () => {
-    if (!selectedApp || rating === 0) return
-    
-    const supabase = createClient()
-    // Here you would save the review to your database
-    // const { error } = await supabase
-    //   .from('application_reviews')
-    //   .insert({
-    //     application_id: selectedApp.id,
-    //     reviewer_id: user.id,
-    //     rating,
-    //     comments,
-    //     reviewed_at: new Date().toISOString()
-    //   })
-    
-    // Update application status to reviewed
-    handleBackToList()
-  }
+    if (!selectedApp || !user) return;
+    setSubmittingReview(true);
+    try {
+      const supabase = createClient();
+      const { error: reviewError } = await supabase.from('reviews').insert({
+        application_id: selectedApp.id,
+        reviewer_id: user.id,
+        rating,
+        comments,
+      });
+      if (reviewError) {
+        toast.error('Failed to submit review.');
+      } else {
+        // Update application status to reviewed (now allowed by DB)
+        const { error: statusError } = await supabase.from('applications').update({ status: 'reviewed' }).eq('id', selectedApp.id);
+        if (statusError) {
+          toast.error('Review submitted, but failed to update application status.');
+        } else {
+          toast.success('Review submitted and application marked as reviewed!');
+        }
+        handleBackToList();
+        window.location.reload(); // Force full refresh to update dashboard
+      }
+    } catch (e) {
+      toast.error('An error occurred while submitting review.');
+    } finally {
+      setSubmittingReview(false);
+    }
+  };
 
   const getResumeUrl = (app: any) => {
     return app.resume_url || app.resume || app.cv_url || null;
@@ -415,12 +430,12 @@ const Reviewer = () => {
                     <div className="flex flex-col gap-2 pt-4">
                       <Button 
                         onClick={handleSubmitReview}
-                        disabled={rating === 0}
+                        disabled={rating === 0 || submittingReview}
                         size="lg"
                         className="w-full"
                       >
                         <CheckCircle2 className="w-4 h-4 mr-2" />
-                        Submit Review
+                        {submittingReview ? 'Submitting...' : 'Submit Review'}
                       </Button>
                       <Button 
                         variant="outline" 
@@ -457,6 +472,9 @@ const Reviewer = () => {
               <p className="text-slate-600 dark:text-slate-400">
                 Welcome{user ? `, ${user.email}` : ''}! Review and rate student applications.
               </p>
+            </div>
+            <div className="ml-auto">
+              <LogoutButton />
             </div>
           </div>
         </div>
