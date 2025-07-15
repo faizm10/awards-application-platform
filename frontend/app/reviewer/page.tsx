@@ -480,7 +480,7 @@ const Reviewer = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <Card className="border-0 shadow-sm bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -495,19 +495,7 @@ const Reviewer = () => {
             </CardContent>
           </Card>
           
-          <Card className="border-0 shadow-sm bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Pending Review</p>
-                  <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{stats.pending}</p>
-                </div>
-                <div className="p-3 bg-yellow-100 dark:bg-yellow-900/30 rounded-full">
-                  <Clock className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          
           
           <Card className="border-0 shadow-sm bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm">
             <CardContent className="p-6">
@@ -566,7 +554,6 @@ const Reviewer = () => {
                   <SelectContent>
                     <SelectItem value="all">All Status</SelectItem>
                     <SelectItem value="submitted">Submitted</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
                     <SelectItem value="reviewed">Reviewed</SelectItem>
                     <SelectItem value="rejected">Rejected</SelectItem>
                   </SelectContent>

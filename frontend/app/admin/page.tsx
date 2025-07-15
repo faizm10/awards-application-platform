@@ -16,6 +16,7 @@ import {
   X,
   Plus,
   Trophy,
+  Star,
 } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
@@ -130,6 +131,15 @@ const AdminDashboard = () => {
     placeholder: "",
   });
 
+  // 1. Add state for reviews
+  const [reviews, setReviews] = useState<any[]>([]);
+
+  // 1. Add state for editing
+  const [editAward, setEditAward] = useState<any>(null);
+  const [showEditAwardModal, setShowEditAwardModal] = useState(false);
+  const [editAwardForm, setEditAwardForm] = useState<any>({});
+  const [isEditing, setIsEditing] = useState(false);
+
   const router = useRouter();
 
   useEffect(() => {
@@ -188,22 +198,43 @@ const AdminDashboard = () => {
     };
     fetchApplications();
   }, []);
+
+  // Move fetchAwards outside of useEffect so it can be called elsewhere
+  const fetchAwards = async () => {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from("awards")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (error) {
+      console.error("Error fetching awards:", error);
+    } else {
+      setAwards(data || []);
+    }
+  };
+
   useEffect(() => {
-    const fetchAwards = async () => {
+    fetchAwards();
+  }, []);
+
+  // 2. Fetch reviews in useEffect
+  useEffect(() => {
+    const fetchReviews = async () => {
       const supabase = createClient();
       const { data, error } = await supabase
-        .from("awards")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      console.log("Fetched awards:", data);
-      if (error) {
-        console.error("Error fetching awards:", error);
-      } else {
-        setAwards(data || []);
-      }
+        .from('reviews')
+        .select(`
+          *,
+          reviewer:reviewer_id (full_name, email),
+          application:application_id (
+            id, first_name, last_name, email, award_id,
+            award:award_id (title, code)
+          )
+        `)
+        .order('created_at', { ascending: false });
+      if (!error && data) setReviews(data);
     };
-    fetchAwards();
+    fetchReviews();
   }, []);
 
   const getStatusIcon = (status: any) => {
@@ -915,6 +946,7 @@ const AdminDashboard = () => {
               { id: "overview", label: "Overview", icon: TrendingUp },
               { id: "applications", label: "Applications", icon: FileText },
               { id: "awards", label: "Awards", icon: Trophy },
+              { id: "reviewer-activity", label: "Reviewer Activity", icon: Star },
               { id: "admins", label: "Admin Users", icon: Users },
             ].map((tab) => (
               <button
@@ -1159,6 +1191,9 @@ const AdminDashboard = () => {
                       <TableHead className="text-left py-3 px-4 font-medium">
                         Deadline
                       </TableHead>
+                      <TableHead className="text-left py-3 px-4 font-medium">
+                        Actions
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1177,14 +1212,50 @@ const AdminDashboard = () => {
                             <div className="font-medium">{app.value}</div>
                           </div>
                         </TableCell>
+                        <TableCell className="py-3 px-4">{app.category}</TableCell>
+                        <TableCell className="py-3 px-4">{app.deadline ? new Date(app.deadline).toLocaleDateString() : "-"}</TableCell>
                         <TableCell className="py-3 px-4">
-                          {app.category}
+                          <Button size="sm" variant="outline" onClick={() => {
+                            setEditAward(app);
+                            setEditAwardForm({ ...app });
+                            setShowEditAwardModal(true);
+                          }}>Edit</Button>
                         </TableCell>
-                        <TableCell className="py-3 px-4">
-                          {app.deadline
-                            ? new Date(app.deadline).toLocaleDateString()
-                            : "-"}
-                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </div>
+          </div>
+        )}
+        {activeTab === "reviewer-activity" && (
+          <div className="space-y-6">
+            <div className="card-modern p-6">
+              <h3 className="text-xl font-bold mb-4 text-foreground">Reviewer Activity</h3>
+              <div className="overflow-x-auto">
+                <Table className="w-full text-sm">
+                  <TableHeader>
+                    <TableRow className="border-b border-border">
+                      <TableHead>Reviewer</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Award</TableHead>
+                      <TableHead>Application</TableHead>
+                      <TableHead>Rating</TableHead>
+                      <TableHead>Comments</TableHead>
+                      <TableHead>Date</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {reviews.map((review) => (
+                      <TableRow key={review.id} className="border-b border-border">
+                        <TableCell>{review.reviewer?.full_name || "-"}</TableCell>
+                        <TableCell>{review.reviewer?.email || "-"}</TableCell>
+                        <TableCell>{review.application?.award?.title || "-"}</TableCell>
+                        <TableCell>{review.application ? `${review.application.first_name} ${review.application.last_name}` : "-"}</TableCell>
+                        <TableCell>{review.rating}</TableCell>
+                        <TableCell>{review.comments}</TableCell>
+                        <TableCell>{review.created_at ? new Date(review.created_at).toLocaleDateString() : "-"}</TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -1197,6 +1268,88 @@ const AdminDashboard = () => {
           <AdminUsersTable />
         )}
       </div>
+
+      {/* Edit Award Modal */}
+      {showEditAwardModal && editAward && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-background rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-6 border-b">
+              <h2 className="text-2xl font-bold">Edit Award</h2>
+              <Button variant="ghost" size="icon" onClick={() => setShowEditAwardModal(false)}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              setIsEditing(true);
+              const supabase = createClient();
+              const { error } = await supabase.from('awards').update({
+                title: editAwardForm.title,
+                code: editAwardForm.code,
+                donor: editAwardForm.donor,
+                value: editAwardForm.value,
+                deadline: editAwardForm.deadline,
+                citizenship: editAwardForm.citizenship,
+                description: editAwardForm.description,
+                eligibility: editAwardForm.eligibility,
+                application_method: editAwardForm.application_method,
+                category: editAwardForm.category,
+              }).eq('id', editAward.id);
+              setIsEditing(false);
+              if (!error) {
+                setShowEditAwardModal(false);
+                toast('Award updated successfully!');
+                fetchAwards();
+              } else {
+                toast('Failed to update award.');
+              }
+            }} className="p-6 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-title">Title *</Label>
+                  <Input id="edit-title" value={editAwardForm.title} onChange={e => setEditAwardForm((f: any) => ({ ...f, title: e.target.value }))} required />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-code">Code *</Label>
+                  <Input id="edit-code" value={editAwardForm.code} onChange={e => setEditAwardForm((f: any) => ({ ...f, code: e.target.value }))} required />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-donor">Donor</Label>
+                  <Input id="edit-donor" value={editAwardForm.donor} onChange={e => setEditAwardForm((f: any) => ({ ...f, donor: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-value">Value ($)</Label>
+                  <Input id="edit-value" value={editAwardForm.value} onChange={e => setEditAwardForm((f: any) => ({ ...f, value: e.target.value }))} />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-deadline">Deadline</Label>
+                  <Input id="edit-deadline" type="date" value={editAwardForm.deadline} onChange={e => setEditAwardForm((f: any) => ({ ...f, deadline: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-category">Category</Label>
+                  <Input id="edit-category" value={editAwardForm.category} onChange={e => setEditAwardForm((f: any) => ({ ...f, category: e.target.value }))} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-description">Description</Label>
+                <Textarea id="edit-description" value={editAwardForm.description} onChange={e => setEditAwardForm((f: any) => ({ ...f, description: e.target.value }))} rows={3} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-eligibility">Eligibility Criteria</Label>
+                <Textarea id="edit-eligibility" value={editAwardForm.eligibility} onChange={e => setEditAwardForm((f: any) => ({ ...f, eligibility: e.target.value }))} rows={3} />
+              </div>
+              <div className="flex justify-end gap-4 pt-4 border-t">
+                <Button type="button" variant="outline" onClick={() => setShowEditAwardModal(false)}>Cancel</Button>
+                <Button type="submit" disabled={isEditing}>{isEditing ? 'Saving...' : 'Save Changes'}</Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
