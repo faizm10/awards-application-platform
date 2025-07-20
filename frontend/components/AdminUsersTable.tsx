@@ -216,45 +216,12 @@ const AdminUsersTable = () => {
                     <span>{user.full_name || "(No Name)"}</span>
                   </TableCell>
                   {activeRole === "reviewer" && (
-                    <TableCell>
-                      {editingCommitteeId === user.id ? (
-                        <div className="flex gap-2 items-center">
-                          <input
-                            className="border rounded px-2 py-1 text-sm"
-                            value={committeeInput}
-                            onChange={(e) => setCommitteeInput(e.target.value)}
-                            disabled={updatingId === user.id}
-                          />
-                          <Button
-                            size="sm"
-                            onClick={() => handleCommitteeSave(user.id)}
-                            disabled={updatingId === user.id || !committeeInput.trim()}
-                          >
-                            Save
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setEditingCommitteeId(null)}
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                      ) : (
+                    <TableCell>                          
                         <div className="flex gap-2 items-center">
                           <span>{user.committee || <span className="text-muted-foreground">(None)</span>}</span>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              setEditingCommitteeId(user.id);
-                              setCommitteeInput(user.committee || "");
-                            }}
-                          >
-                            Edit
-                          </Button>
+                          
                         </div>
-                      )}
+                      
                     </TableCell>
                   )}
                   <TableCell className="capitalize">{user.user_type}</TableCell>
@@ -263,19 +230,7 @@ const AdminUsersTable = () => {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      <Select
-                        value={user.user_type}
-                        onValueChange={(value) => handleRoleChange(user.id, value)}
-                        disabled={updatingId === user.id}
-                      >
-                        <SelectTrigger className="w-32">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="admin">Admin</SelectItem>
-                          <SelectItem value="reviewer">Reviewer</SelectItem>
-                        </SelectContent>
-                      </Select>
+                      
                       <Button size="sm" variant="outline" onClick={() => openEditModal(user)}>
                         Edit
                       </Button>

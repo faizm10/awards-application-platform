@@ -398,11 +398,7 @@ const AwardDetailPage = () => {
                           <span className="font-medium text-sm">
                             {field.label}
                           </span>
-                          {/* {field.required && (
-                            <span className="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded">
-                              Required
-                            </span>
-                          )} */}
+                    
                          
                         </div>
                         {field.field_config?.question && (

@@ -5,8 +5,6 @@ import { Card, CardContent, CardTitle, CardHeader } from '@/components/ui/card'
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { 
   Eye, 
@@ -92,7 +90,13 @@ const Reviewer = () => {
     setDetailsLoading(true)
     setRating(0)
     setComments('')
-    
+
+    // Debug: Log the application object and file URLs
+    console.log('Selected Application:', app);
+    console.log('letter_url:', app.letter_url);
+    console.log('international_intent_url:', app.international_intent_url);
+    console.log('certificate_url:', app.certificate_url);
+
     const supabase = createClient()
     const { data: award } = await supabase.from('awards').select('*').eq('id', app.award_id).single()
     setAwardInfo(award)
@@ -181,7 +185,7 @@ const Reviewer = () => {
     reviewed: applications.filter(app => app.status === 'reviewed').length,
     submitted: applications.filter(app => app.status === 'submitted').length,
   }
-
+  
   if (viewMode === 'details' && selectedApp) {
     // Gather all PDF/file fields (resume, letter, etc)
     const pdfFields = [
@@ -330,6 +334,7 @@ const Reviewer = () => {
                           } else {
                             response = selectedApp[field.field_name] || '';
                           }
+                          const isFileField = field.type === 'file';
                           return (
                             <div key={field.id}>
                               <div className="flex items-center gap-2 mb-3">
@@ -342,9 +347,12 @@ const Reviewer = () => {
                                 </p>
                               )}
                               <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg border-l-4 border-l-primary/30">
-                                <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
-                                  {response ? response : 'No response provided'}
-                                </p>
+                                {isFileField
+                                  ? <span className="text-muted-foreground">See below for uploaded file.</span>
+                                  : <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
+                                      {response ? response : 'No response provided'}
+                                    </p>
+                                }
                               </div>
                               {index < requiredFields.length - 1 && <Separator className="mt-6" />}
                             </div>
@@ -362,26 +370,35 @@ const Reviewer = () => {
                     <CardTitle className="text-lg flex items-center gap-2">
                       <FileText className="w-5 h-5" />
                       {file.label}
-                      <Button 
-                        size="sm" 
-                        variant="outline"
-                        onClick={() => window.open(file.url, '_blank')}
-                        className="ml-auto"
-                      >
-                        <Download className="w-4 h-4 mr-1" />
-                        Download
-                      </Button>
+                      {/* Only show download button for non-PDFs */}
+                      {!file.url.endsWith('.pdf') && (
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => window.open(file.url, '_blank')}
+                          className="ml-auto"
+                        >
+                          <Download className="w-4 h-4 mr-1" />
+                          Download
+                        </Button>
+                      )}
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="h-[600px] md:h-[70vh] w-full bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden border">
-                      <iframe
-                        src={file.url}
-                        title={file.label + ' PDF'}
-                        className="w-full h-full border-0 min-h-[400px]"
-                        allow="autoplay"
-                      />
-                    </div>
+                    {file.url.endsWith('.pdf') ? (
+                      <div className="h-[600px] md:h-[70vh] w-full bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden border">
+                        <iframe
+                          src={file.url}
+                          title={file.label + ' PDF'}
+                          className="w-full h-full border-0 min-h-[400px]"
+                          allow="autoplay"
+                        />
+                      </div>
+                    ) : (
+                      <div className="text-muted-foreground">
+                        <p>This file type cannot be previewed. Please use the download button above to view it.</p>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               ))}
