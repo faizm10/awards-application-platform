@@ -17,6 +17,15 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useRouter, usePathname } from "next/navigation";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+
 interface RequiredField {
   id: string;
   field_name: string;
@@ -56,6 +65,7 @@ const ApplicationManagement: React.FC<ApplicationManagementProps> = ({
   const [saving, setSaving] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [wordCounts, setWordCounts] = useState<Record<string, number>>({});
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   useEffect(() => {
     if (userId) {
@@ -210,7 +220,54 @@ const ApplicationManagement: React.FC<ApplicationManagementProps> = ({
   const submitApplication = async () => {
     if (!userId) return;
 
-    // Validate required fields
+    setSubmitting(true);
+    const supabase = createClient();
+
+    try {
+      const applicationData = {
+        award_id: awardId,
+        student_id: userId,
+        status: "submitted",
+        submitted_at: new Date().toISOString(),
+        essay_responses: essayResponses, // Store as JSON
+        ...formData,
+      };
+
+      let updatedApp;
+      if (application) {
+        const { data, error } = await supabase
+          .from("applications")
+          .update(applicationData)
+          .eq("id", application.id)
+          .select()
+          .single();
+
+        if (error) throw error;
+        updatedApp = data;
+      } else {
+        const { data, error } = await supabase
+          .from("applications")
+          .insert([applicationData])
+          .select()
+          .single();
+
+        if (error) throw error;
+        updatedApp = data;
+      }
+
+      setApplication(updatedApp); // <-- update state immediately
+      toast("Application submitted successfully!");
+      // Optionally, call fetchApplication() if you want to re-fetch from DB
+    } catch (error) {
+      console.error("Error submitting application:", error);
+      toast("Error submitting application. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleSubmitClick = () => {
+    // Validate required fields first
     const missingFields = requiredFields.filter((field) => {
       if (!field.required) return false;
 
@@ -258,50 +315,13 @@ const ApplicationManagement: React.FC<ApplicationManagementProps> = ({
       return;
     }
 
-    setSubmitting(true);
-    const supabase = createClient();
+    // Show confirmation modal
+    setShowConfirmModal(true);
+  };
 
-    try {
-      const applicationData = {
-        award_id: awardId,
-        student_id: userId,
-        status: "submitted",
-        submitted_at: new Date().toISOString(),
-        essay_responses: essayResponses, // Store as JSON
-        ...formData,
-      };
-
-      let updatedApp;
-      if (application) {
-        const { data, error } = await supabase
-          .from("applications")
-          .update(applicationData)
-          .eq("id", application.id)
-          .select()
-          .single();
-
-        if (error) throw error;
-        updatedApp = data;
-      } else {
-        const { data, error } = await supabase
-          .from("applications")
-          .insert([applicationData])
-          .select()
-          .single();
-
-        if (error) throw error;
-        updatedApp = data;
-      }
-
-      setApplication(updatedApp); // <-- update state immediately
-      toast("Application submitted successfully!");
-      // Optionally, call fetchApplication() if you want to re-fetch from DB
-    } catch (error) {
-      console.error("Error submitting application:", error);
-      toast("Error submitting application. Please try again.");
-    } finally {
-      setSubmitting(false);
-    }
+  const handleConfirmSubmit = async () => {
+    setShowConfirmModal(false);
+    await submitApplication();
   };
 
   const renderField = (field: RequiredField) => {
@@ -513,7 +533,7 @@ const ApplicationManagement: React.FC<ApplicationManagementProps> = ({
                 </Button>
 
                 <Button
-                  onClick={submitApplication}
+                  onClick={handleSubmitClick}
                   disabled={submitting}
                   className="flex items-center gap-2"
                 >
@@ -521,6 +541,42 @@ const ApplicationManagement: React.FC<ApplicationManagementProps> = ({
                   {submitting ? "Submitting..." : "Submit Application"}
                 </Button>
               </div>
+
+              {/* Confirmation Modal */}
+              <Dialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <AlertCircle className="w-5 h-5 text-orange-500" />
+                      Confirm Application Submission
+                    </DialogTitle>
+                    <DialogDescription className="text-base">
+                      Are you sure you want to submit your application? 
+                      <br /><br />
+                      <strong className="text-orange-600">
+                        ⚠️ Important: Once submitted, you will not be able to make any changes to your application.
+                      </strong>
+                      <br /><br />
+                      Please review all your information carefully before confirming.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <DialogFooter>
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowConfirmModal(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleConfirmSubmit}
+                      className="bg-orange-600 hover:bg-orange-700"
+                    >
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Confirm Submit
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
             </>
           ) : (
             <div className="text-center py-8">
