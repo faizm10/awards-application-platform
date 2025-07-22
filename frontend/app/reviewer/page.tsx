@@ -92,10 +92,10 @@ const Reviewer = () => {
     setComments('')
 
     // Debug: Log the application object and file URLs
-    console.log('Selected Application:', app);
-    console.log('letter_url:', app.letter_url);
-    console.log('international_intent_url:', app.international_intent_url);
-    console.log('certificate_url:', app.certificate_url);
+    // console.log('Selected Application:', app);
+    // console.log('letter_url:', app.letter_url);
+    // console.log('international_intent_url:', app.international_intent_url);
+    // console.log('certificate_url:', app.certificate_url);
 
     const supabase = createClient()
     const { data: award } = await supabase.from('awards').select('*').eq('id', app.award_id).single()
