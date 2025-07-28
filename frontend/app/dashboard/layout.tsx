@@ -41,34 +41,6 @@ export default function dashboardLayout({
                   <Award className="h-4 w-4" />
                   Awards
                 </Link>
-                <Link 
-                  href="/search" 
-                  className="flex items-center gap-2 text-foreground hover:text-primary transition-colors font-medium"
-                >
-                  <Search className="h-4 w-4" />
-                  Search
-                </Link>
-                <Link 
-                  href="/applications" 
-                  className="flex items-center gap-2 text-foreground hover:text-primary transition-colors font-medium"
-                >
-                  <BookOpen className="h-4 w-4" />
-                  Applications
-                </Link>
-                <Link 
-                  href="/profile" 
-                  className="flex items-center gap-2 text-foreground hover:text-primary transition-colors font-medium"
-                >
-                  <User className="h-4 w-4" />
-                  Profile
-                </Link>
-                <Link 
-                  href="/settings" 
-                  className="flex items-center gap-2 text-foreground hover:text-primary transition-colors font-medium"
-                >
-                  <Settings className="h-4 w-4" />
-                  Settings
-                </Link>
               </div>
             </div>
             <div className="flex items-center gap-4">

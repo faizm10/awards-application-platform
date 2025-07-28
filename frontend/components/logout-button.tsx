@@ -12,9 +12,18 @@ export function LogoutButton() {
 
   const logout = async () => {
     setIsLoading(true);
-    const supabase = createClient();
-    await supabase.auth.signOut();
-    router.push("/");
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      // Force a page refresh to clear any cached state
+      window.location.href = "/";
+    } catch (error) {
+      console.error("Error during logout:", error);
+      // Fallback to router push if window.location fails
+      router.push("/");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

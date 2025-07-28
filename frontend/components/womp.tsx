@@ -33,11 +33,26 @@ export function NavbarDemo() {
 
   useEffect(() => {
     const fetchUser = async () => {
-      const supabase = createClient();
-      const { data } = await supabase.auth.getUser();
-      setUser(data.user);
+      try {
+        const supabase = createClient();
+        const { data } = await supabase.auth.getUser();
+        setUser(data.user);
+      } catch (error) {
+        console.error("Error fetching user:", error);
+        setUser(null);
+      }
     };
     fetchUser();
+
+    // Listen for auth state changes
+    const supabase = createClient();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setUser(session?.user || null);
+      }
+    );
+
+    return () => subscription.unsubscribe();
   }, []);
 
   return (

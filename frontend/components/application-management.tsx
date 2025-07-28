@@ -551,13 +551,27 @@ const ApplicationManagement: React.FC<ApplicationManagementProps> = ({
                       Confirm Application Submission
                     </DialogTitle>
                     <DialogDescription className="text-base">
-                      Are you sure you want to submit your application? 
-                      <br /><br />
-                      <strong className="text-orange-600">
-                        ⚠️ Important: Once submitted, you will not be able to make any changes to your application.
-                      </strong>
-                      <br /><br />
-                      Please review all your information carefully before confirming.
+                      {isDraft ? (
+                        <>
+                          You are about to submit your draft application. 
+                          <br /><br />
+                          <strong className="text-orange-600">
+                            ⚠️ Important: Once submitted, you will not be able to make any changes to your application.
+                          </strong>
+                          <br /><br />
+                          Please review all your information carefully before confirming.
+                        </>
+                      ) : (
+                        <>
+                          Are you sure you want to submit your application? 
+                          <br /><br />
+                          <strong className="text-orange-600">
+                            ⚠️ Important: Once submitted, you will not be able to make any changes to your application.
+                          </strong>
+                          <br /><br />
+                          Please review all your information carefully before confirming.
+                        </>
+                      )}
                     </DialogDescription>
                   </DialogHeader>
                   <DialogFooter>
