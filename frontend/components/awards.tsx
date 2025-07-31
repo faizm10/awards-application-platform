@@ -30,11 +30,11 @@ function AwardCard({ award }: { award: Award }) {
       <div className="flex justify-between items-start mb-4">
         <div>
           <h3 className="text-xl font-semibold text-gray-900">{award.title}</h3>
-          <p className="text-sm text-gray-600">Code: {award.code}</p>
+          {/* <p className="text-sm text-gray-600">Code: {award.code}</p> */}
         </div>
         <div className="text-right">
           <p className="text-lg font-bold text-green-600">{award.value}</p>
-          <p className="text-sm text-gray-600">{award.category}</p>
+          {/* <p className="text-sm text-gray-600">{award.category}</p> */}
         </div>
       </div>
 
@@ -66,10 +66,7 @@ function AwardCard({ award }: { award: Award }) {
           </p>
           <div className="flex flex-wrap gap-1">
             {award.citizenship.map((country, index) => (
-              <span
-                key={index}
-                className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded"
-              >
+              <span key={index} className="px-2 py-1  text-xs rounded">
                 {country}
               </span>
             ))}
@@ -98,7 +95,25 @@ function AwardCard({ award }: { award: Award }) {
   );
 }
 
-export function AwardsList({ searchTerm = "" }: { searchTerm?: string }) {
+interface AwardsListProps {
+  searchTerm?: string;
+  category?: string;
+  minValue?: number;
+  maxValue?: number;
+  deadlineFilter?: string;
+  citizenship?: string[];
+  sortBy?: string;
+}
+
+export function AwardsList({ 
+  searchTerm = "", 
+  category = "All Categories",
+  minValue = 0,
+  maxValue = 100000,
+  deadlineFilter = "all",
+  citizenship = [],
+  sortBy = "title"
+}: AwardsListProps) {
   // const { data: awards, isLoading, error } = useAwards(); // Commented out GraphQL/React Query
   const [awards, setAwards] = useState<Award[] | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -113,7 +128,7 @@ export function AwardsList({ searchTerm = "" }: { searchTerm?: string }) {
         .from("awards")
         .select("*")
         .eq("is_active", true)
-        .order("deadline", { ascending: true });
+        .order("title", { ascending: true }); // Changed from "deadline" to "title"
       if (error) {
         setError(error.message);
         setIsLoading(false);
@@ -125,18 +140,94 @@ export function AwardsList({ searchTerm = "" }: { searchTerm?: string }) {
     fetchAwards();
   }, []);
 
-  // Filter awards by search term
-  const filteredAwards = (awards || []).filter((award) => {
-    if (!searchTerm.trim()) return true;
-    const term = searchTerm.toLowerCase();
-    return (
-      award.title.toLowerCase().includes(term) ||
-      award.donor.toLowerCase().includes(term) ||
-      award.code.toLowerCase().includes(term) ||
-      award.description.toLowerCase().includes(term) ||
-      award.eligibility.toLowerCase().includes(term)
+  // Helper function to extract numeric value from award value string
+  const extractValue = (valueString: string): number => {
+    const match = valueString.match(/\$?([\d,]+)/);
+    return match ? parseInt(match[1].replace(/,/g, '')) : 0;
+  };
+
+  // Helper function to check if award meets deadline filter
+  const meetsDeadlineFilter = (deadline: string): boolean => {
+    const deadlineDate = new Date(deadline);
+    const today = new Date();
+    const daysUntilDeadline = Math.ceil(
+      (deadlineDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)
     );
-  });
+
+    switch (deadlineFilter) {
+      case "this-week":
+        return daysUntilDeadline <= 7 && daysUntilDeadline >= 0;
+      case "this-month":
+        return daysUntilDeadline <= 30 && daysUntilDeadline >= 0;
+      case "next-month":
+        return daysUntilDeadline <= 60 && daysUntilDeadline > 30;
+      case "past":
+        return daysUntilDeadline < 0;
+      default:
+        return true;
+    }
+  };
+
+  // Helper function to check if award meets citizenship filter
+  const meetsCitizenshipFilter = (awardCitizenship: string[]): boolean => {
+    if (citizenship.length === 0) return true;
+    return citizenship.some(c => awardCitizenship.includes(c));
+  };
+
+  // Filter and sort awards
+  const filteredAwards = (awards || [])
+    .filter((award) => {
+      // Search term filter
+      if (searchTerm.trim()) {
+        const term = searchTerm.toLowerCase();
+        const matchesSearch = 
+          award.title.toLowerCase().includes(term) ||
+          award.donor.toLowerCase().includes(term) ||
+          award.code.toLowerCase().includes(term) ||
+          award.description.toLowerCase().includes(term) ||
+          award.eligibility.toLowerCase().includes(term);
+        if (!matchesSearch) return false;
+      }
+
+      // Category filter
+      if (category !== "All Categories" && award.category !== category) {
+        return false;
+      }
+
+      // Value range filter
+      const awardValue = extractValue(award.value);
+      if (awardValue < minValue || awardValue > maxValue) {
+        return false;
+      }
+
+      // Deadline filter
+      if (!meetsDeadlineFilter(award.deadline)) {
+        return false;
+      }
+
+      // Citizenship filter
+      if (!meetsCitizenshipFilter(award.citizenship)) {
+        return false;
+      }
+
+      return true;
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case "title":
+          return a.title.localeCompare(b.title);
+        case "value-high":
+          return extractValue(b.value) - extractValue(a.value);
+        case "value-low":
+          return extractValue(a.value) - extractValue(b.value);
+        case "deadline":
+          return new Date(a.deadline).getTime() - new Date(b.deadline).getTime();
+        case "deadline-late":
+          return new Date(b.deadline).getTime() - new Date(a.deadline).getTime();
+        default:
+          return a.title.localeCompare(b.title);
+      }
+    });
 
   if (isLoading) {
     return (
@@ -165,9 +256,7 @@ export function AwardsList({ searchTerm = "" }: { searchTerm?: string }) {
             />
           </svg>
           <h3 className="text-lg font-semibold">Error Loading Awards</h3>
-          <p className="text-sm text-gray-600 mt-2">
-            {error}
-          </p>
+          <p className="text-sm text-gray-600 mt-2">{error}</p>
         </div>
         <button
           onClick={() => window.location.reload()}
@@ -216,7 +305,11 @@ export function AwardsList({ searchTerm = "" }: { searchTerm?: string }) {
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-1">
         {filteredAwards.map((award) => (
-          <Link key={award.id} href={`/awards/${award.code}`} className="block hover:shadow-lg transition-shadow">
+          <Link
+            key={award.id}
+            href={`/awards/${award.code}`}
+            className="block hover:shadow-lg transition-shadow"
+          >
             <AwardCard award={award} />
           </Link>
         ))}

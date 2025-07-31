@@ -1,22 +1,140 @@
 "use client";
 
-import { useState } from "react";
-import { Award, Search, Filter, Clock } from "lucide-react";
+import { useState, useEffect } from "react";
+import {
+  Award,
+  Search,
+  Filter,
+  Clock,
+  X,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { AwardsList } from "@/components/awards";
 import { NavbarDemo } from "@/components/womp";
+import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+
+interface FilterState {
+  searchTerm: string;
+  category: string;
+  minValue: number;
+  maxValue: number;
+  deadlineFilter: string;
+  citizenship: string[];
+  sortBy: string;
+  showAdvanced: boolean;
+}
 
 function AwardsPage() {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("All Categories");
+  const [filters, setFilters] = useState<FilterState>({
+    searchTerm: "",
+    category: "All Categories",
+    minValue: 0,
+    maxValue: 100000,
+    deadlineFilter: "all",
+    citizenship: [],
+    sortBy: "title",
+    showAdvanced: false,
+  });
+
+  const [availableCategories, setAvailableCategories] = useState<string[]>([]);
+  const [availableCitizenships, setAvailableCitizenships] = useState<string[]>(
+    []
+  );
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Fetch available filter options
+  useEffect(() => {
+    const fetchFilterOptions = async () => {
+      try {
+        const response = await fetch("/api/awards/filter-options");
+        if (response.ok) {
+          const data = await response.json();
+          setAvailableCategories(data.categories || []);
+          setAvailableCitizenships(data.citizenships || []);
+        }
+      } catch (error) {
+        console.error("Error fetching filter options:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchFilterOptions();
+  }, []);
 
   const handleSearch = (value: string) => {
-    setSearchTerm(value);
+    setFilters((prev) => ({ ...prev, searchTerm: value }));
   };
 
   const handleCategoryChange = (category: string) => {
-    setSelectedCategory(category);
+    setFilters((prev) => ({ ...prev, category }));
+  };
+
+  const handleDeadlineFilterChange = (filter: string) => {
+    setFilters((prev) => ({ ...prev, deadlineFilter: filter }));
+  };
+
+  const handleCitizenshipToggle = (citizenship: string) => {
+    setFilters((prev) => ({
+      ...prev,
+      citizenship: prev.citizenship.includes(citizenship)
+        ? prev.citizenship.filter((c) => c !== citizenship)
+        : [...prev.citizenship, citizenship],
+    }));
+  };
+
+  const handleSortChange = (sortBy: string) => {
+    setFilters((prev) => ({ ...prev, sortBy }));
+  };
+
+  const clearAllFilters = () => {
+    setFilters({
+      searchTerm: "",
+      category: "All Categories",
+      minValue: 0,
+      maxValue: 100000,
+      deadlineFilter: "all",
+      citizenship: [],
+      sortBy: "title",
+      showAdvanced: false,
+    });
+  };
+
+  const getActiveFiltersCount = () => {
+    let count = 0;
+    if (filters.searchTerm) count++;
+    if (filters.category !== "All Categories") count++;
+    if (filters.minValue > 0 || filters.maxValue < 100000) count++;
+    if (filters.deadlineFilter !== "all") count++;
+    if (filters.citizenship.length > 0) count++;
+    return count;
+  };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    }).format(value);
   };
 
   return (
@@ -51,15 +169,153 @@ function AwardsPage() {
                     <Input
                       placeholder="Search awards, organizations, or keywords..."
                       className="pl-12 h-12 bg-background/50 border-border/50 text-lg focus:ring-2 focus:ring-primary/20"
-                      value={searchTerm}
+                      value={filters.searchTerm}
                       onChange={(e) => handleSearch(e.target.value)}
                     />
                   </div>
-                  <Button size="lg" className="btn-primary h-12 px-8">
+                  <Button
+                    size="lg"
+                    className="btn-primary h-12 px-8"
+                    onClick={() =>
+                      setFilters((prev) => ({
+                        ...prev,
+                        showAdvanced: !prev.showAdvanced,
+                      }))
+                    }
+                  >
                     <Filter className="mr-2 h-5 w-5" />
                     Advanced Filters
+                    {getActiveFiltersCount() > 0 && (
+                      <Badge variant="secondary" className="ml-2">
+                        {getActiveFiltersCount()}
+                      </Badge>
+                    )}
                   </Button>
                 </div>
+
+                {/* Advanced Filters */}
+                <Collapsible open={filters.showAdvanced}>
+                  <CollapsibleContent className="space-y-6 pt-6 border-t border-border/50">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {/* Category Filter */}
+                      <div className="space-y-2">
+                        <Label htmlFor="category">Category</Label>
+                        <Select
+                          value={filters.category}
+                          onValueChange={handleCategoryChange}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select category" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="All Categories">
+                              All Categories
+                            </SelectItem>
+                            {availableCategories.map((category) => (
+                              <SelectItem key={category} value={category}>
+                                {category}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Deadline Filter */}
+                      <div className="space-y-2">
+                        <Label htmlFor="deadline">Deadline</Label>
+                        <Select
+                          value={filters.deadlineFilter}
+                          onValueChange={handleDeadlineFilterChange}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select deadline filter" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">All Deadlines</SelectItem>
+                            <SelectItem value="this-week">This Week</SelectItem>
+                            <SelectItem value="this-month">
+                              This Month
+                            </SelectItem>
+                            <SelectItem value="next-month">
+                              Next Month
+                            </SelectItem>
+                            <SelectItem value="past">Past Deadline</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Sort By */}
+                      <div className="space-y-2">
+                        <Label htmlFor="sort">Sort By</Label>
+                        <Select
+                          value={filters.sortBy}
+                          onValueChange={handleSortChange}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Sort by" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="title">Title (A-Z)</SelectItem>
+                            <SelectItem value="value-high">
+                              Value (High to Low)
+                            </SelectItem>
+                            <SelectItem value="value-low">
+                              Value (Low to High)
+                            </SelectItem>
+                            <SelectItem value="deadline">
+                              Deadline (Soonest)
+                            </SelectItem>
+                            <SelectItem value="deadline-late">
+                              Deadline (Latest)
+                            </SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {/* Citizenship Filter */}
+                    {availableCitizenships.length > 0 && (
+                      <div className="space-y-3">
+                        <Label>Citizenship Requirements</Label>
+                        <div className="flex flex-wrap gap-2">
+                          {availableCitizenships.map((citizenship) => (
+                            <div
+                              key={citizenship}
+                              className="flex items-center space-x-2"
+                            >
+                              <Checkbox
+                                id={citizenship}
+                                checked={filters.citizenship.includes(
+                                  citizenship
+                                )}
+                                onCheckedChange={() =>
+                                  handleCitizenshipToggle(citizenship)
+                                }
+                              />
+                              <Label htmlFor={citizenship} className="text-sm">
+                                {citizenship}
+                              </Label>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Clear Filters */}
+                    {getActiveFiltersCount() > 0 && (
+                      <div className="flex justify-end">
+                        <Button
+                          variant="outline"
+                          onClick={clearAllFilters}
+                          className="flex items-center gap-2"
+                        >
+                          <X className="w-4 h-4" />
+                          Clear All Filters
+                        </Button>
+                      </div>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
               </div>
             </div>
           </div>
@@ -67,37 +323,20 @@ function AwardsPage() {
 
         {/* Awards Section */}
         <div className="animate-slide-in-up">
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <Award className="h-8 w-8 text-primary" />
-                <div className="absolute inset-0 animate-pulse-ring border-2 border-primary rounded-full" />
-              </div>
-              <div>
-                <h2 className="text-3xl font-bold text-foreground">
-                  Featured Awards
-                </h2>
-                <p className="text-muted-foreground">
-                  Handpicked opportunities for you
-                </p>
-              </div>
-            </div>
-
-            <div className="hidden md:flex items-center gap-4">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Clock className="h-4 w-4" />
-                <span>Last updated: 2 hours ago</span>
-              </div>
-              <div className="hexagon" />
-            </div>
-          </div>
-
           {/* Morphing decoration */}
           <div className="absolute top-20 right-10 w-32 h-32 opacity-10 -z-10">
             <div className="morphing-shape" />
           </div>
 
-          <AwardsList searchTerm={searchTerm} />
+          <AwardsList
+            searchTerm={filters.searchTerm}
+            category={filters.category}
+            minValue={filters.minValue}
+            maxValue={filters.maxValue}
+            deadlineFilter={filters.deadlineFilter}
+            citizenship={filters.citizenship}
+            sortBy={filters.sortBy}
+          />
         </div>
       </div>
     </div>

@@ -2,6 +2,7 @@ import { AuthButton } from "@/components/auth-button";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import Link from "next/link";
 import { Home, Award, User, Settings, Search, BookOpen } from "lucide-react";
+import { IconDashboard } from "@tabler/icons-react";
 
 export default function dashboardLayout({
   children,
@@ -27,13 +28,14 @@ export default function dashboardLayout({
                 AwardFlow
               </Link>
               <div className="hidden md:flex items-center gap-6">
-                <Link 
+              <Link 
                   href="/dashboard" 
                   className="flex items-center gap-2 text-foreground hover:text-primary transition-colors font-medium"
                 >
                   <Home className="h-4 w-4" />
-                  Dashboard
+                  Home
                 </Link>
+                
                 <Link 
                   href="/awards" 
                   className="flex items-center gap-2 text-foreground hover:text-primary transition-colors font-medium"

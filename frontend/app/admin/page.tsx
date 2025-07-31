@@ -83,18 +83,47 @@ const AdminDashboard = () => {
 
   const [selectedFieldOption, setSelectedFieldOption] = useState("");
 
-  // Add this predefined fields configuration after the state declarations
+  // Standard fields that are always included
+  const STANDARD_FIELDS = [
+    {
+      field_name: "first_name",
+      label: "Student First Name",
+      type: "text",
+      required: true,
+    },
+    {
+      field_name: "last_name",
+      label: "Student Last Name",
+      type: "text",
+      required: true,
+    },
+    {
+      field_name: "student_id_text",
+      label: "Student ID",
+      type: "text",
+      required: true,
+    },
+    {
+      field_name: "email",
+      label: "Email Address",
+      type: "text",
+      required: true,
+    },
+    {
+      field_name: "major_program",
+      label: "Major/Program",
+      type: "text",
+      required: true,
+    },
+  ];
+
+  // Additional fields available in dropdown
   const PREDEFINED_FIELDS = [
-    { field_name: "first_name", label: "Student First Name", type: "text" },
-    { field_name: "last_name", label: "Student Last Name", type: "text" },
-    { field_name: "student_id_text", label: "Student ID", type: "text" },
-    { field_name: "major_program", label: "Major/Program", type: "text" },
     {
       field_name: "credits_completed",
       label: "Credits Completed",
       type: "text",
     },
-    { field_name: "email", label: "Email Address", type: "text" },
     { field_name: "resume_url", label: "Upload Resume", type: "file" },
     { field_name: "letter_url", label: "Upload Letter", type: "file" },
     {
@@ -139,6 +168,9 @@ const AdminDashboard = () => {
   const [showEditAwardModal, setShowEditAwardModal] = useState(false);
   const [editAwardForm, setEditAwardForm] = useState<any>({});
   const [isEditing, setIsEditing] = useState(false);
+  const [applicationCounts, setApplicationCounts] = useState<{
+    [key: string]: number;
+  }>({});
 
   const router = useRouter();
 
@@ -181,6 +213,7 @@ const AdminDashboard = () => {
             email
           ),
           award:award_id (
+            id,
             title,
             code,
             value
@@ -217,21 +250,30 @@ const AdminDashboard = () => {
     fetchAwards();
   }, []);
 
+  // Calculate application counts when both applications and awards are loaded
+  useEffect(() => {
+    if (applications.length > 0 && awards.length > 0) {
+      calculateApplicationCounts();
+    }
+  }, [applications, awards]);
+
   // 2. Fetch reviews in useEffect
   useEffect(() => {
     const fetchReviews = async () => {
       const supabase = createClient();
       const { data, error } = await supabase
-        .from('reviews')
-        .select(`
+        .from("reviews")
+        .select(
+          `
           *,
           reviewer:reviewer_id (full_name, email),
           application:application_id (
             id, first_name, last_name, email, award_id,
             award:award_id (title, code)
           )
-        `)
-        .order('created_at', { ascending: false });
+        `
+        )
+        .order("created_at", { ascending: false });
       if (!error && data) setReviews(data);
     };
     fetchReviews();
@@ -366,6 +408,28 @@ const AdminDashboard = () => {
     }
   };
 
+  // Calculate application counts for each award
+  const calculateApplicationCounts = () => {
+    const counts: { [key: string]: number } = {};
+    console.log("Calculating application counts...");
+    console.log("Applications:", applications);
+    console.log("Awards:", awards);
+
+    applications.forEach((app: any) => {
+      const awardId = app.award?.id || app.award_id;
+      console.log(
+        `Application ${app.id}: award_id = ${awardId}, award =`,
+        app.award
+      );
+      if (awardId) {
+        counts[awardId] = (counts[awardId] || 0) + 1;
+      }
+    });
+
+    console.log("Calculated counts:", counts);
+    setApplicationCounts(counts);
+  };
+
   // Update the handleSubmitAward function to include the required fields creation
   const handleSubmitAward = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -400,29 +464,44 @@ const AdminDashboard = () => {
         return;
       }
 
-      // Then, create the required fields if any
-      if (requiredFields.length > 0) {
-        const fieldsToInsert = requiredFields.map((field) => ({
-          award_id: awardData.id,
-          field_name: field.unique_id
-            ? `essay_response_${field.unique_id}`
-            : field.field_name, // Use unique field name for essays
-          label: field.label,
-          type: field.type,
-          required: field.required,
-          question: field.field_config?.question || null,
-          field_config: field.field_config || null,
-        }));
+      // Create standard fields (always included)
+      const standardFieldsToInsert = STANDARD_FIELDS.map((field) => ({
+        award_id: awardData.id,
+        field_name: field.field_name,
+        label: field.label,
+        type: field.type,
+        required: field.required,
+        question: null,
+        field_config: null,
+      }));
 
-        const { error: fieldsError } = await supabase
-          .from("award_required_fields")
-          .insert(fieldsToInsert);
+      // Create additional required fields if any
+      const additionalFieldsToInsert = requiredFields.map((field) => ({
+        award_id: awardData.id,
+        field_name: field.unique_id
+          ? `essay_response_${field.unique_id}`
+          : field.field_name, // Use unique field name for essays
+        label: field.label,
+        type: field.type,
+        required: field.required,
+        question: field.field_config?.question || null,
+        field_config: field.field_config || null,
+      }));
 
-        if (fieldsError) {
-          console.error("Error creating required fields:", fieldsError);
-          toast("Award created but there was an error adding required fields.");
-          return;
-        }
+      // Insert all fields (standard + additional)
+      const allFieldsToInsert = [
+        ...standardFieldsToInsert,
+        ...additionalFieldsToInsert,
+      ];
+
+      const { error: fieldsError } = await supabase
+        .from("award_required_fields")
+        .insert(allFieldsToInsert);
+
+      if (fieldsError) {
+        console.error("Error creating required fields:", fieldsError);
+        toast("Award created but there was an error adding required fields.");
+        return;
       }
 
       console.log("Award and required fields created successfully");
@@ -537,7 +616,7 @@ const AdminDashboard = () => {
                     type="text"
                     value={awardForm.value}
                     onChange={(e) => handleInputChange("value", e.target.value)}
-                    placeholder="Award value"
+                    placeholder="1 award of $1000"
                   />
                 </div>
               </div>
@@ -657,9 +736,37 @@ const AdminDashboard = () => {
                   </p>
                 </div>
 
+                {/* Standard Fields Section */}
+                <div className="bg-green-50 dark:bg-green-950/20 p-4 rounded-lg space-y-3">
+                  <h5 className="font-medium text-green-700 dark:text-green-300">
+                    Standard Fields (Always Included)
+                  </h5>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {STANDARD_FIELDS.map((field) => (
+                      <div
+                        key={field.field_name}
+                        className="flex items-center gap-2 p-2 bg-white dark:bg-gray-800 rounded border"
+                      >
+                        <span className="text-sm font-medium">
+                          {field.label}
+                        </span>
+                        <Badge variant="secondary" className="text-xs">
+                          {field.type}
+                        </Badge>
+                        <Badge
+                          variant="outline"
+                          className="text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
+                        >
+                          Required
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 {/* Add Field Selector */}
                 <div className="bg-muted/30 p-4 rounded-lg space-y-4">
-                  <h5 className="font-medium">Add Required Field</h5>
+                  <h5 className="font-medium">Add Additional Fields</h5>
                   <div className="flex gap-2">
                     <div className="flex-1">
                       <Select
@@ -669,7 +776,7 @@ const AdminDashboard = () => {
                         <SelectTrigger>
                           <SelectValue placeholder="Select a field to add..." />
                         </SelectTrigger>
-                        <SelectContent>
+                        <SelectContent className="max-h-60">
                           {PREDEFINED_FIELDS.filter((field) => {
                             // Allow multiple essay questions but prevent duplicate non-essay fields
                             if (field.field_name === "essay_question")
@@ -946,7 +1053,11 @@ const AdminDashboard = () => {
               { id: "overview", label: "Overview", icon: TrendingUp },
               { id: "applications", label: "Applications", icon: FileText },
               { id: "awards", label: "Awards", icon: Trophy },
-              { id: "reviewer-activity", label: "Reviewer Activity", icon: Star },
+              {
+                id: "reviewer-activity",
+                label: "Reviewer Activity",
+                icon: Star,
+              },
               { id: "admins", label: "Admin Users", icon: Users },
             ].map((tab) => (
               <button
@@ -1035,6 +1146,39 @@ const AdminDashboard = () => {
 
         {activeTab === "applications" && (
           <div className="space-y-6">
+            {/* Application Summary */}
+            <div className="card-modern p-6">
+              <h3 className="text-xl font-bold mb-4 text-foreground">
+                Application Summary
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {awards.map((award: any) => {
+                  const applicationCount = applicationCounts[award.id] || 0;
+                  return (
+                    <div
+                      key={award.id}
+                      className="bg-muted/30 p-4 rounded-lg border"
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <h4 className="font-medium text-sm truncate">
+                          {award.title}
+                        </h4>
+                        <Badge variant="secondary" className="text-xs">
+                          {applicationCount}{" "}
+                          {applicationCount === 1
+                            ? "application"
+                            : "applications"}
+                        </Badge>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {award.code} • ${award.value?.toLocaleString()}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
             {/* Search and Filter */}
             <div className="card-modern p-6">
               <div className="flex flex-col sm:flex-row gap-4">
@@ -1212,14 +1356,26 @@ const AdminDashboard = () => {
                             <div className="font-medium">{app.value}</div>
                           </div>
                         </TableCell>
-                        <TableCell className="py-3 px-4">{app.category}</TableCell>
-                        <TableCell className="py-3 px-4">{app.deadline ? new Date(app.deadline).toLocaleDateString() : "-"}</TableCell>
                         <TableCell className="py-3 px-4">
-                          <Button size="sm" variant="outline" onClick={() => {
-                            setEditAward(app);
-                            setEditAwardForm({ ...app });
-                            setShowEditAwardModal(true);
-                          }}>Edit</Button>
+                          {app.category}
+                        </TableCell>
+                        <TableCell className="py-3 px-4">
+                          {app.deadline
+                            ? new Date(app.deadline).toLocaleDateString()
+                            : "-"}
+                        </TableCell>
+                        <TableCell className="py-3 px-4">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setEditAward(app);
+                              setEditAwardForm({ ...app });
+                              setShowEditAwardModal(true);
+                            }}
+                          >
+                            Edit
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -1232,7 +1388,9 @@ const AdminDashboard = () => {
         {activeTab === "reviewer-activity" && (
           <div className="space-y-6">
             <div className="card-modern p-6">
-              <h3 className="text-xl font-bold mb-4 text-foreground">Reviewer Activity</h3>
+              <h3 className="text-xl font-bold mb-4 text-foreground">
+                Reviewer Activity
+              </h3>
               <div className="overflow-x-auto">
                 <Table className="w-full text-sm">
                   <TableHeader>
@@ -1248,14 +1406,29 @@ const AdminDashboard = () => {
                   </TableHeader>
                   <TableBody>
                     {reviews.map((review) => (
-                      <TableRow key={review.id} className="border-b border-border">
-                        <TableCell>{review.reviewer?.full_name || "-"}</TableCell>
+                      <TableRow
+                        key={review.id}
+                        className="border-b border-border"
+                      >
+                        <TableCell>
+                          {review.reviewer?.full_name || "-"}
+                        </TableCell>
                         <TableCell>{review.reviewer?.email || "-"}</TableCell>
-                        <TableCell>{review.application?.award?.title || "-"}</TableCell>
-                        <TableCell>{review.application ? `${review.application.first_name} ${review.application.last_name}` : "-"}</TableCell>
+                        <TableCell>
+                          {review.application?.award?.title || "-"}
+                        </TableCell>
+                        <TableCell>
+                          {review.application
+                            ? `${review.application.first_name} ${review.application.last_name}`
+                            : "-"}
+                        </TableCell>
                         <TableCell>{review.rating}</TableCell>
                         <TableCell>{review.comments}</TableCell>
-                        <TableCell>{review.created_at ? new Date(review.created_at).toLocaleDateString() : "-"}</TableCell>
+                        <TableCell>
+                          {review.created_at
+                            ? new Date(review.created_at).toLocaleDateString()
+                            : "-"}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -1264,9 +1437,7 @@ const AdminDashboard = () => {
             </div>
           </div>
         )}
-        {activeTab === "admins" && (
-          <AdminUsersTable />
-        )}
+        {activeTab === "admins" && <AdminUsersTable />}
       </div>
 
       {/* Edit Award Modal */}
@@ -1275,76 +1446,171 @@ const AdminDashboard = () => {
           <div className="bg-background rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between p-6 border-b">
               <h2 className="text-2xl font-bold">Edit Award</h2>
-              <Button variant="ghost" size="icon" onClick={() => setShowEditAwardModal(false)}>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowEditAwardModal(false)}
+              >
                 <X className="w-4 h-4" />
               </Button>
             </div>
-            <form onSubmit={async (e) => {
-              e.preventDefault();
-              setIsEditing(true);
-              const supabase = createClient();
-              const { error } = await supabase.from('awards').update({
-                title: editAwardForm.title,
-                code: editAwardForm.code,
-                donor: editAwardForm.donor,
-                value: editAwardForm.value,
-                deadline: editAwardForm.deadline,
-                citizenship: editAwardForm.citizenship,
-                description: editAwardForm.description,
-                eligibility: editAwardForm.eligibility,
-                application_method: editAwardForm.application_method,
-                category: editAwardForm.category,
-              }).eq('id', editAward.id);
-              setIsEditing(false);
-              if (!error) {
-                setShowEditAwardModal(false);
-                toast('Award updated successfully!');
-                fetchAwards();
-              } else {
-                toast('Failed to update award.');
-              }
-            }} className="p-6 space-y-6">
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                setIsEditing(true);
+                const supabase = createClient();
+                const { error } = await supabase
+                  .from("awards")
+                  .update({
+                    title: editAwardForm.title,
+                    code: editAwardForm.code,
+                    donor: editAwardForm.donor,
+                    value: editAwardForm.value,
+                    deadline: editAwardForm.deadline,
+                    citizenship: editAwardForm.citizenship,
+                    description: editAwardForm.description,
+                    eligibility: editAwardForm.eligibility,
+                    application_method: editAwardForm.application_method,
+                    category: editAwardForm.category,
+                  })
+                  .eq("id", editAward.id);
+                setIsEditing(false);
+                if (!error) {
+                  setShowEditAwardModal(false);
+                  toast("Award updated successfully!");
+                  fetchAwards();
+                } else {
+                  toast("Failed to update award.");
+                }
+              }}
+              className="p-6 space-y-6"
+            >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="edit-title">Title *</Label>
-                  <Input id="edit-title" value={editAwardForm.title} onChange={e => setEditAwardForm((f: any) => ({ ...f, title: e.target.value }))} required />
+                  <Input
+                    id="edit-title"
+                    value={editAwardForm.title}
+                    onChange={(e) =>
+                      setEditAwardForm((f: any) => ({
+                        ...f,
+                        title: e.target.value,
+                      }))
+                    }
+                    required
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-code">Code *</Label>
-                  <Input id="edit-code" value={editAwardForm.code} onChange={e => setEditAwardForm((f: any) => ({ ...f, code: e.target.value }))} required />
+                  <Input
+                    id="edit-code"
+                    value={editAwardForm.code}
+                    onChange={(e) =>
+                      setEditAwardForm((f: any) => ({
+                        ...f,
+                        code: e.target.value,
+                      }))
+                    }
+                    required
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="edit-donor">Donor</Label>
-                  <Input id="edit-donor" value={editAwardForm.donor} onChange={e => setEditAwardForm((f: any) => ({ ...f, donor: e.target.value }))} />
+                  <Input
+                    id="edit-donor"
+                    value={editAwardForm.donor}
+                    onChange={(e) =>
+                      setEditAwardForm((f: any) => ({
+                        ...f,
+                        donor: e.target.value,
+                      }))
+                    }
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-value">Value ($)</Label>
-                  <Input id="edit-value" value={editAwardForm.value} onChange={e => setEditAwardForm((f: any) => ({ ...f, value: e.target.value }))} />
+                  <Input
+                    id="edit-value"
+                    value={editAwardForm.value}
+                    onChange={(e) =>
+                      setEditAwardForm((f: any) => ({
+                        ...f,
+                        value: e.target.value,
+                      }))
+                    }
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="edit-deadline">Deadline</Label>
-                  <Input id="edit-deadline" type="date" value={editAwardForm.deadline} onChange={e => setEditAwardForm((f: any) => ({ ...f, deadline: e.target.value }))} />
+                  <Input
+                    id="edit-deadline"
+                    type="date"
+                    value={editAwardForm.deadline}
+                    onChange={(e) =>
+                      setEditAwardForm((f: any) => ({
+                        ...f,
+                        deadline: e.target.value,
+                      }))
+                    }
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-category">Category</Label>
-                  <Input id="edit-category" value={editAwardForm.category} onChange={e => setEditAwardForm((f: any) => ({ ...f, category: e.target.value }))} />
+                  <Input
+                    id="edit-category"
+                    value={editAwardForm.category}
+                    onChange={(e) =>
+                      setEditAwardForm((f: any) => ({
+                        ...f,
+                        category: e.target.value,
+                      }))
+                    }
+                  />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-description">Description</Label>
-                <Textarea id="edit-description" value={editAwardForm.description} onChange={e => setEditAwardForm((f: any) => ({ ...f, description: e.target.value }))} rows={3} />
+                <Textarea
+                  id="edit-description"
+                  value={editAwardForm.description}
+                  onChange={(e) =>
+                    setEditAwardForm((f: any) => ({
+                      ...f,
+                      description: e.target.value,
+                    }))
+                  }
+                  rows={3}
+                />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-eligibility">Eligibility Criteria</Label>
-                <Textarea id="edit-eligibility" value={editAwardForm.eligibility} onChange={e => setEditAwardForm((f: any) => ({ ...f, eligibility: e.target.value }))} rows={3} />
+                <Textarea
+                  id="edit-eligibility"
+                  value={editAwardForm.eligibility}
+                  onChange={(e) =>
+                    setEditAwardForm((f: any) => ({
+                      ...f,
+                      eligibility: e.target.value,
+                    }))
+                  }
+                  rows={3}
+                />
               </div>
               <div className="flex justify-end gap-4 pt-4 border-t">
-                <Button type="button" variant="outline" onClick={() => setShowEditAwardModal(false)}>Cancel</Button>
-                <Button type="submit" disabled={isEditing}>{isEditing ? 'Saving...' : 'Save Changes'}</Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowEditAwardModal(false)}
+                >
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isEditing}>
+                  {isEditing ? "Saving..." : "Save Changes"}
+                </Button>
               </div>
             </form>
           </div>

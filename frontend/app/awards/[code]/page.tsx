@@ -102,56 +102,12 @@ const AwardDetailPage = () => {
       </div>
 
       {/* Hero Banner */}
-      <div className="relative w-full bg-gradient-to-br from-primary/10 via-chart-2/10 to-background rounded-b-3xl shadow-lg overflow-hidden mb-12">
-        <div className="max-w-4xl mx-auto px-4 py-12 md:py-20 text-center relative z-10">
-          <h1 className="text-4xl md:text-6xl font-extrabold gradient-text mb-4 drop-shadow-lg">
+      <div className="relative w-full bg-gradient-to-br from-primary/10 via-chart-2/10 to-background rounded-b-3xl shadow-lg overflow-hidden mb-8">
+        <div className="max-w-4xl mx-auto px-4 py-8 md:py-12 text-center relative z-10">
+          <h1 className="text-3xl md:text-5xl font-extrabold gradient-text mb-4 drop-shadow-lg">
             {award.title}
           </h1>
-          <div className="flex flex-col md:flex-row gap-2 md:gap-4 items-center justify-center mb-6">
-            <span className="inline-flex items-center gap-2 bg-primary/10 text-primary px-3 py-1 rounded-full text-sm font-semibold">
-              <svg width="18" height="18" fill="none" viewBox="0 0 24 24">
-                <circle
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                />
-                <path
-                  d="M12 6v6l4 2"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              {award.donor}
-            </span>
-          </div>
           <div className="flex flex-wrap gap-4 justify-center mt-4">
-            <InfoCard
-              icon={
-                <svg width="24" height="24" fill="none" viewBox="0 0 24 24">
-                  <rect
-                    x="4"
-                    y="4"
-                    width="16"
-                    height="16"
-                    rx="4"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  />
-                  <path
-                    d="M8 12h8"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              }
-              label="Category"
-              value={award.category}
-            />
             <InfoCard
               icon={
                 <svg width="24" height="24" fill="none" viewBox="0 0 24 24">

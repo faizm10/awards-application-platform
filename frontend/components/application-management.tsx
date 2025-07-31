@@ -220,11 +220,6 @@ const ApplicationManagement: React.FC<ApplicationManagementProps> = ({
   const submitApplication = async () => {
     if (!userId) return;
 
-    console.log("🚀 Starting application submission...");
-    console.log("Current application state:", application);
-    console.log("Form data:", formData);
-    console.log("Essay responses:", essayResponses);
-
     setSubmitting(true);
     const supabase = createClient();
 
@@ -238,14 +233,8 @@ const ApplicationManagement: React.FC<ApplicationManagementProps> = ({
         ...formData,
       };
 
-      console.log("📝 Application data to submit:", applicationData);
-      console.log("📝 Status being set to:", applicationData.status);
-
       let updatedApp;
       if (application) {
-        console.log("🔄 Updating existing application with ID:", application.id);
-        console.log("🔄 Current application status:", application.status);
-        
         const { data, error } = await supabase
           .from("applications")
           .update(applicationData)
@@ -253,61 +242,27 @@ const ApplicationManagement: React.FC<ApplicationManagementProps> = ({
           .select()
           .single();
 
-        if (error) {
-          console.error("❌ Database update error:", error);
-          throw error;
-        }
+        if (error) throw error;
         updatedApp = data;
-        console.log("✅ Database update successful:", updatedApp);
-        console.log("✅ New status from database:", updatedApp.status);
-        
-        // If the status didn't update, try a direct status update
-        if (updatedApp.status !== "submitted") {
-          console.log("⚠️ Status didn't update properly, trying direct status update...");
-          const { data: statusUpdateData, error: statusError } = await supabase
-            .from("applications")
-            .update({ status: "submitted", submitted_at: new Date().toISOString() })
-            .eq("id", application.id)
-            .select()
-            .single();
-            
-          if (statusError) {
-            console.error("❌ Direct status update error:", statusError);
-          } else {
-            console.log("✅ Direct status update successful:", statusUpdateData);
-            updatedApp = statusUpdateData;
-          }
-        }
       } else {
-        console.log("🆕 Creating new application");
         const { data, error } = await supabase
           .from("applications")
           .insert([applicationData])
           .select()
           .single();
 
-        if (error) {
-          console.error("❌ Database insert error:", error);
-          throw error;
-        }
+        if (error) throw error;
         updatedApp = data;
-        console.log("✅ Database insert successful:", updatedApp);
       }
 
-      console.log("🔄 Setting application state to:", updatedApp);
-      setApplication(updatedApp);
-      
-      // Force a re-render by logging the state change
-      console.log("📊 Application status after update:", updatedApp.status);
-      
+      setApplication(updatedApp); // <-- update state immediately
       toast("Application submitted successfully!");
-      console.log("✅ Submission process completed successfully");
+      // Optionally, call fetchApplication() if you want to re-fetch from DB
     } catch (error) {
-      console.error("❌ Error submitting application:", error);
+      console.error("Error submitting application:", error);
       toast("Error submitting application. Please try again.");
     } finally {
       setSubmitting(false);
-      console.log("🏁 Submission process finished");
     }
   };
 
@@ -365,10 +320,8 @@ const ApplicationManagement: React.FC<ApplicationManagementProps> = ({
   };
 
   const handleConfirmSubmit = async () => {
-    console.log("🔐 Confirming submission...");
     setShowConfirmModal(false);
     await submitApplication();
-    console.log("🔐 Confirmation and submission completed");
   };
 
   const renderField = (field: RequiredField) => {
@@ -529,13 +482,6 @@ const ApplicationManagement: React.FC<ApplicationManagementProps> = ({
 
   const isSubmitted = application?.status === "submitted";
   const isDraft = application?.status === "draft";
-  
-  console.log("🎯 Current application status check:", {
-    application,
-    status: application?.status,
-    isSubmitted,
-    isDraft
-  });
 
   return (
     <section className="card-modern p-6">
@@ -605,27 +551,13 @@ const ApplicationManagement: React.FC<ApplicationManagementProps> = ({
                       Confirm Application Submission
                     </DialogTitle>
                     <DialogDescription className="text-base">
-                      {isDraft ? (
-                        <>
-                          You are about to submit your draft application. 
-                          <br /><br />
-                          <strong className="text-orange-600">
-                            ⚠️ Important: Once submitted, you will not be able to make any changes to your application.
-                          </strong>
-                          <br /><br />
-                          Please review all your information carefully before confirming.
-                        </>
-                      ) : (
-                        <>
-                          Are you sure you want to submit your application? 
-                          <br /><br />
-                          <strong className="text-orange-600">
-                            ⚠️ Important: Once submitted, you will not be able to make any changes to your application.
-                          </strong>
-                          <br /><br />
-                          Please review all your information carefully before confirming.
-                        </>
-                      )}
+                      Are you sure you want to submit your application? 
+                      <br /><br />
+                      <strong className="text-orange-600">
+                        ⚠️ Important: Once submitted, you will not be able to make any changes to your application.
+                      </strong>
+                      <br /><br />
+                      Please review all your information carefully before confirming.
                     </DialogDescription>
                   </DialogHeader>
                   <DialogFooter>

@@ -198,7 +198,7 @@ const Reviewer = () => {
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
-        <div className="container mx-auto px-4 py-8 max-w-2xl">
+        <div className="container mx-auto px-4 py-8 max-w-7xl">
           {/* Header with Back Button */}
           <div className="mb-8">
             <Button 
@@ -230,196 +230,83 @@ const Reviewer = () => {
               <span>Loading application details...</span>
             </div>
           ) : (
-            <div className="space-y-8">
-              {/* Award Info */}
-              {awardInfo && (
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              {/* Sidebar - Compact Applicant & Award Info */}
+              <div className="lg:col-span-1 space-y-4">
+                {/* Compact Student Info */}
                 <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <Award className="w-5 h-5" />
-                      Award Information
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <User className="w-4 h-4" />
+                      Applicant
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardContent className="space-y-3">
                     <div>
-                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Title</p>
-                      <p className="text-xl font-semibold">{awardInfo.title}</p>
+                      <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Name</p>
+                      <p className="text-sm font-semibold">{selectedApp.first_name} {selectedApp.last_name}</p>
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Description</p>
-                      <p className="text-slate-700 dark:text-slate-300 leading-relaxed">{awardInfo.description}</p>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Eligibility</p>
-                        <p className="text-slate-700 dark:text-slate-300">{awardInfo.eligibility}</p>
-                      </div>
-                      <div>
-                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Deadline</p>
-                        <p className="text-slate-700 dark:text-slate-300">{awardInfo.deadline}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Student Info */}
-              <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <User className="w-5 h-5" />
-                    Student Information
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Full Name</p>
-                      <p className="text-lg font-semibold">{selectedApp.first_name} {selectedApp.last_name}</p>
+                      <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Email</p>
+                      <p className="text-sm">{selectedApp.email}</p>
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Email</p>
-                      <p className="text-lg">{selectedApp.email}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Status</p>
-                      <Badge className={`${getStatusColor(selectedApp.status)} font-medium w-fit`}>
+                      <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Status</p>
+                      <Badge className={`${getStatusColor(selectedApp.status)} text-xs font-medium w-fit`}>
                         {getStatusIcon(selectedApp.status)}
                         <span className="ml-1 capitalize">{selectedApp.status}</span>
                       </Badge>
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Submitted</p>
-                      <p className="text-lg">{selectedApp.submitted_at ? new Date(selectedApp.submitted_at).toLocaleDateString() : '-'}</p>
+                      <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Submitted</p>
+                      <p className="text-sm">{selectedApp.submitted_at ? new Date(selectedApp.submitted_at).toLocaleDateString() : '-'}</p>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Application Responses (Essay Questions) */}
-              <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <FileText className="w-5 h-5" />
-                    Application Responses
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {requiredFields.length === 0 ? (
-                    <p className="text-slate-500 dark:text-slate-400">No required fields found for this award.</p>
-                  ) : (
-                    <div className="space-y-6">
-                      {requiredFields
-                        .filter(field => field.field_name !== 'resume_url' && field.field_name !== 'resume' && field.field_name !== 'cv_url')
-                        .map((field, index) => {
-                          let response = '';
-                          // If essay, check essay_responses JSON
-                          if (field.field_config?.type === 'essay' && selectedApp.essay_responses) {
-                            try {
-                              const essays = typeof selectedApp.essay_responses === 'string' ? JSON.parse(selectedApp.essay_responses) : selectedApp.essay_responses;
-                              // Try multiple possible keys
-                              response = essays[field.field_name] || essays[field.id] || '';
-                              // Try keys that start with 'essay_response_'
-                              if (!response) {
-                                const essayKey = Object.keys(essays).find(k => k.endsWith(field.id));
-                                if (essayKey) response = essays[essayKey];
-                              }
-                              // Debug log
-                              if (!response) {
-                                console.log('Essay debug:', { essays, fieldName: field.field_name, fieldId: field.id, keys: Object.keys(essays) });
-                              }
-                            } catch {
-                              response = '';
-                            }
-                          } else {
-                            response = selectedApp[field.field_name] || '';
-                          }
-                          const isFileField = field.type === 'file';
-                          return (
-                            <div key={field.id}>
-                              <div className="flex items-center gap-2 mb-3">
-                                <MessageSquare className="w-4 h-4 text-primary" />
-                                <p className="font-semibold text-slate-900 dark:text-slate-100">{field.label}</p>
-                              </div>
-                              {field.field_config?.question && (
-                                <p className="text-sm text-slate-600 dark:text-slate-400 italic mb-3 pl-6">
-                                  Question: {field.field_config.question}
-                                </p>
-                              )}
-                              <div className="bg-slate-50 dark:bg-slate-800 p-4 rounded-lg border-l-4 border-l-primary/30">
-                                {isFileField
-                                  ? <span className="text-muted-foreground">See below for uploaded file.</span>
-                                  : <p className="text-slate-700 dark:text-slate-300 leading-relaxed">
-                                      {response ? response : 'No response provided'}
-                                    </p>
-                                }
-                              </div>
-                              {index < requiredFields.length - 1 && <Separator className="mt-6" />}
-                            </div>
-                          );
-                        })}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* All PDFs */}
-              {pdfFields.length > 0 && pdfFields.map((file, idx) => (
-                <Card key={file.label} className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-                  <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
-                      <FileText className="w-5 h-5" />
-                      {file.label}
-                      {/* Only show download button for non-PDFs */}
-                      {!file.url.endsWith('.pdf') && (
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          onClick={() => window.open(file.url, '_blank')}
-                          className="ml-auto"
-                        >
-                          <Download className="w-4 h-4 mr-1" />
-                          Download
-                        </Button>
-                      )}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {file.url.endsWith('.pdf') ? (
-                      <div className="h-[600px] md:h-[70vh] w-full bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden border">
-                        <iframe
-                          src={file.url}
-                          title={file.label + ' PDF'}
-                          className="w-full h-full border-0 min-h-[400px]"
-                          allow="autoplay"
-                        />
-                      </div>
-                    ) : (
-                      <div className="text-muted-foreground">
-                        <p>This file type cannot be previewed. Please use the download button above to view it.</p>
-                      </div>
-                    )}
                   </CardContent>
                 </Card>
-              ))}
 
-              {/* Review Panel (unchanged) */}
-              <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Star className="w-5 h-5" />
-                    Submit Review
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
+                {/* Compact Award Info */}
+                {awardInfo && (
+                  <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                    <CardHeader className="pb-3">
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Award className="w-4 h-4" />
+                        Award
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div>
+                        <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Title</p>
+                        <p className="text-sm font-semibold">{awardInfo.title}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Value</p>
+                        <p className="text-sm">${awardInfo.value?.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Deadline</p>
+                        <p className="text-sm">{awardInfo.deadline}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Review Panel - Compact */}
+                <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Star className="w-4 h-4" />
+                      Review
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
                     <div>
-                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-3">Rating</p>
+                      <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">Rating</p>
                       <div className="flex items-center gap-1">
                         {[1, 2, 3, 4, 5].map((star) => (
                           <button
                             key={star}
                             onClick={() => setRating(star)}
-                            className={`w-10 h-10 rounded-full transition-all duration-200 ${
+                            className={`w-8 h-8 rounded-full transition-all duration-200 ${
                               star <= rating 
                                 ? 'text-yellow-400 hover:text-yellow-500 scale-110' 
                                 : 'text-slate-300 hover:text-slate-400'
@@ -429,43 +316,142 @@ const Reviewer = () => {
                           </button>
                         ))}
                       </div>
-                      <p className="text-sm text-slate-600 dark:text-slate-400 mt-2">
-                        {rating > 0 ? `${rating}/5 stars` : 'Click to rate'}
-                      </p>
                     </div>
                     
                     <div>
-                      <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-2">Comments</p>
+                      <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">Comments</p>
                       <Textarea
                         value={comments}
                         onChange={(e) => setComments(e.target.value)}
-                        placeholder="Add your detailed review comments here..."
-                        className="min-h-32 resize-none"
+                        placeholder="Add your review comments..."
+                        className="min-h-24 resize-none text-sm"
                       />
                     </div>
                     
-                    <div className="flex flex-col gap-2 pt-4">
+                    <div className="flex flex-col gap-2">
                       <Button 
                         onClick={handleSubmitReview}
                         disabled={rating === 0 || submittingReview}
-                        size="lg"
+                        size="sm"
                         className="w-full"
                       >
                         <CheckCircle2 className="w-4 h-4 mr-2" />
                         {submittingReview ? 'Submitting...' : 'Submit Review'}
                       </Button>
-                      <Button 
-                        variant="outline" 
-                        onClick={handleBackToList}
-                        size="lg"
-                        className="w-full"
-                      >
-                        <ArrowLeft className="w-4 h-4 mr-2" />
-                        Back to List
-                      </Button>
                     </div>
                   </CardContent>
                 </Card>
+              </div>
+
+              {/* Main Content Area */}
+              <div className="lg:col-span-3 space-y-6">
+
+                {/* Application Responses (Essay Questions) */}
+                <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <FileText className="w-4 h-4" />
+                      Application Responses
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    {requiredFields.length === 0 ? (
+                      <p className="text-slate-500 dark:text-slate-400 text-sm">No required fields found for this award.</p>
+                    ) : (
+                      <div className="space-y-4">
+                        {requiredFields
+                          .filter(field => field.field_name !== 'resume_url' && field.field_name !== 'resume' && field.field_name !== 'cv_url')
+                          .map((field, index) => {
+                            let response = '';
+                            // If essay, check essay_responses JSON
+                            if (field.field_config?.type === 'essay' && selectedApp.essay_responses) {
+                              try {
+                                const essays = typeof selectedApp.essay_responses === 'string' ? JSON.parse(selectedApp.essay_responses) : selectedApp.essay_responses;
+                                // Try multiple possible keys
+                                response = essays[field.field_name] || essays[field.id] || '';
+                                // Try keys that start with 'essay_response_'
+                                if (!response) {
+                                  const essayKey = Object.keys(essays).find(k => k.endsWith(field.id));
+                                  if (essayKey) response = essays[essayKey];
+                                }
+                                // Debug log
+                                if (!response) {
+                                  console.log('Essay debug:', { essays, fieldName: field.field_name, fieldId: field.id, keys: Object.keys(essays) });
+                                }
+                              } catch {
+                                response = '';
+                              }
+                            } else {
+                              response = selectedApp[field.field_name] || '';
+                            }
+                            const isFileField = field.type === 'file';
+                            return (
+                              <div key={field.id} className="border border-border/50 rounded-lg p-3">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <MessageSquare className="w-3 h-3 text-primary" />
+                                  <p className="font-medium text-sm text-slate-900 dark:text-slate-100">{field.label}</p>
+                                </div>
+                                {field.field_config?.question && (
+                                  <p className="text-xs text-slate-600 dark:text-slate-400 italic mb-2 pl-5">
+                                    "{field.field_config.question}"
+                                  </p>
+                                )}
+                                <div className="bg-slate-50/50 dark:bg-slate-800/50 p-3 rounded border-l-2 border-l-primary/20">
+                                  {isFileField
+                                    ? <span className="text-xs text-muted-foreground">See below for uploaded file.</span>
+                                    : <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                                        {response ? response : 'No response provided'}
+                                      </p>
+                                  }
+                                </div>
+                              </div>
+                            );
+                          })}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* All PDFs */}
+                {pdfFields.length > 0 && pdfFields.map((file, idx) => (
+                  <Card key={file.label} className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <FileText className="w-5 h-5" />
+                        {file.label}
+                        {/* Only show download button for non-PDFs */}
+                        {!file.url.endsWith('.pdf') && (
+                          <Button 
+                            size="sm" 
+                            variant="outline"
+                            onClick={() => window.open(file.url, '_blank')}
+                            className="ml-auto"
+                          >
+                            <Download className="w-4 h-4 mr-1" />
+                            Download
+                          </Button>
+                        )}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {file.url.endsWith('.pdf') ? (
+                        <div className="h-[600px] md:h-[70vh] w-full bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden border">
+                          <iframe
+                            src={file.url}
+                            title={file.label + ' PDF'}
+                            className="w-full h-full border-0 min-h-[400px]"
+                            allow="autoplay"
+                          />
+                        </div>
+                      ) : (
+                        <div className="text-muted-foreground">
+                          <p>This file type cannot be previewed. Please use the download button above to view it.</p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
             </div>
           )}
         </div>
