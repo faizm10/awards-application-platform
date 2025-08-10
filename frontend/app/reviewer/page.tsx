@@ -27,6 +27,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner';
 import { LogoutButton } from "@/components/logout-button";
 
@@ -41,6 +42,7 @@ const Reviewer = () => {
   const [detailsLoading, setDetailsLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [activeTab, setActiveTab] = useState('submitted')
   const [rating, setRating] = useState(0)
   const [comments, setComments] = useState('')
   const [viewMode, setViewMode] = useState<'list' | 'details'>('list')
@@ -52,13 +54,15 @@ const Reviewer = () => {
       const { data: userData } = await supabase.auth.getUser()
       setUser(userData.user)
       if (userData.user) {
+        // Fetch both submitted and reviewed applications
         const { data, error } = await supabase
           .from('applications')
           .select('*')
+          .in('status', ['submitted', 'reviewed'])
           .order('created_at', { ascending: false })
         if (!error && data) {
           setApplications(data)
-          setFilteredApplications(data)
+          setFilteredApplications(data.filter(app => app.status === 'submitted'))
         }
       }
       setLoading(false)
@@ -66,9 +70,9 @@ const Reviewer = () => {
     fetchUserAndApplications()
   }, [])
 
-  // Filter applications based on search and status
+  // Filter applications based on search, status, and active tab
   useEffect(() => {
-    let filtered = applications
+    let filtered = applications.filter(app => app.status === activeTab)
     
     if (searchTerm) {
       filtered = filtered.filter(app => 
@@ -82,7 +86,7 @@ const Reviewer = () => {
     }
     
     setFilteredApplications(filtered)
-  }, [searchTerm, statusFilter, applications])
+  }, [searchTerm, statusFilter, activeTab, applications])
 
   const handleViewApplication = async (app: any) => {
     setSelectedApp(app)
@@ -529,7 +533,7 @@ const Reviewer = () => {
           </Card>
         </div>
 
-        {/* Applications Table */}
+        {/* Applications Table with Tabs */}
         <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
           <CardHeader className="pb-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
@@ -549,107 +553,205 @@ const Reviewer = () => {
                     className="pl-10 w-full sm:w-64"
                   />
                 </div>
-                <Select value={statusFilter} onValueChange={setStatusFilter}>
-                  <SelectTrigger className="w-full sm:w-40">
-                    <Filter className="w-4 h-4 mr-2" />
-                    <SelectValue placeholder="Filter by status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="submitted">Submitted</SelectItem>
-                    <SelectItem value="reviewed">Reviewed</SelectItem>
-                    <SelectItem value="rejected">Rejected</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
             </div>
           </CardHeader>
           
-          <CardContent>
-            {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent mr-3" />
-                <span className="text-slate-600 dark:text-slate-400">Loading applications...</span>
-              </div>
-            ) : filteredApplications.length === 0 ? (
-              <div className="text-center py-12">
-                <FileText className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-                <p className="text-slate-600 dark:text-slate-400">
-                  {searchTerm || statusFilter !== 'all' ? 'No applications match your filters.' : 'No applications to review yet.'}
-                </p>
-              </div>
-            ) : (
-              <div className="rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-slate-50 dark:bg-slate-800/50">
-                      <TableHead className="font-semibold">Student</TableHead>
-                      <TableHead className="font-semibold">Status</TableHead>
-                      <TableHead className="font-semibold">Submitted</TableHead>
-                      <TableHead className="font-semibold">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredApplications.map((app, index) => (
-                      <TableRow 
-                        key={app.id} 
-                        className={`transition-all duration-200 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer ${
-                          index % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50/50 dark:bg-slate-800/30'
-                        }`}
-                        onClick={() => handleViewApplication(app)}
-                      >
-                        <TableCell>
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center">
-                              <User className="w-5 h-5 text-primary" />
-                            </div>
-                            <div>
-                              <p className="font-medium text-slate-900 dark:text-slate-100">
-                                {app.first_name} {app.last_name}
-                              </p>
-                              <p className="text-sm text-slate-500 dark:text-slate-400">
-                                {app.email}
-                              </p>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge className={`${getStatusColor(app.status)} font-medium`}>
-                            {getStatusIcon(app.status)}
-                            <span className="ml-1 capitalize">{app.status}</span>
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
-                            <Calendar className="w-4 h-4" />
-                            <span className="text-sm">
-                              {app.submitted_at ? new Date(app.submitted_at).toLocaleDateString() : '-'}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Button 
-                              size="sm" 
-                              variant="outline" 
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleViewApplication(app)
-                              }}
-                              className="hover:bg-primary hover:text-primary-foreground transition-colors"
-                            >
-                              <Eye className="w-4 h-4 mr-1" />
-                              Review
-                            </Button>
-                            <ChevronRight className="w-4 h-4 text-slate-400" />
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            )}
+                    <CardContent>
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+              <TabsList className="grid w-full grid-cols-2 mb-6">
+                <TabsTrigger value="submitted" className="flex items-center gap-2">
+                  <Clock className="w-4 h-4" />
+                  Submitted ({applications.filter(app => app.status === 'submitted').length})
+                </TabsTrigger>
+                <TabsTrigger value="reviewed" className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4" />
+                  Reviewed ({applications.filter(app => app.status === 'reviewed').length})
+                </TabsTrigger>
+              </TabsList>
+              
+              <TabsContent value="submitted">
+                {loading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent mr-3" />
+                    <span className="text-slate-600 dark:text-slate-400">Loading applications...</span>
+                  </div>
+                ) : filteredApplications.length === 0 ? (
+                  <div className="text-center py-12">
+                    <FileText className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                    <p className="text-slate-600 dark:text-slate-400">
+                      {searchTerm ? 'No submitted applications match your search.' : 'No submitted applications to review yet.'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-slate-50 dark:bg-slate-800/50">
+                          <TableHead className="font-semibold">Student</TableHead>
+                          <TableHead className="font-semibold">Status</TableHead>
+                          <TableHead className="font-semibold">Submitted</TableHead>
+                          <TableHead className="font-semibold">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredApplications.map((app, index) => (
+                          <TableRow 
+                            key={app.id} 
+                            className={`transition-all duration-200 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer ${
+                              index % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50/50 dark:bg-slate-800/30'
+                            }`}
+                            onClick={() => handleViewApplication(app)}
+                          >
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center">
+                                  <User className="w-5 h-5 text-primary" />
+                                </div>
+                                <div>
+                                  <p className="font-medium text-slate-900 dark:text-slate-100">
+                                    {app.first_name} {app.last_name}
+                                  </p>
+                                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                                    {app.email}
+                                  </p>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={`${getStatusColor(app.status)} font-medium`}>
+                                {getStatusIcon(app.status)}
+                                <span className="ml-1 capitalize">{app.status}</span>
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                                <Calendar className="w-4 h-4" />
+                                <span className="text-sm">
+                                  {app.submitted_at ? new Date(app.submitted_at).toLocaleDateString() : '-'}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleViewApplication(app)
+                                  }}
+                                  className="hover:bg-primary hover:text-primary-foreground transition-colors"
+                                >
+                                  <Eye className="w-4 h-4 mr-1" />
+                                  Review
+                                </Button>
+                                <ChevronRight className="w-4 h-4 text-slate-400" />
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </TabsContent>
+              
+              <TabsContent value="reviewed">
+                {loading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="animate-spin rounded-full h-8 w-8 border-4 border-primary border-t-transparent mr-3" />
+                    <span className="text-slate-600 dark:text-slate-400">Loading applications...</span>
+                  </div>
+                ) : applications.filter(app => app.status === 'reviewed').length === 0 ? (
+                  <div className="text-center py-12">
+                    <CheckCircle2 className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+                    <p className="text-slate-600 dark:text-slate-400">
+                      No reviewed applications yet.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-slate-50 dark:bg-slate-800/50">
+                          <TableHead className="font-semibold">Student</TableHead>
+                          <TableHead className="font-semibold">Status</TableHead>
+                          <TableHead className="font-semibold">Reviewed</TableHead>
+                          <TableHead className="font-semibold">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {applications
+                          .filter(app => app.status === 'reviewed')
+                          .filter(app => 
+                            searchTerm ? 
+                              `${app.first_name} ${app.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                              app.email?.toLowerCase().includes(searchTerm.toLowerCase())
+                            : true
+                          )
+                          .map((app, index) => (
+                          <TableRow 
+                            key={app.id} 
+                            className={`transition-all duration-200 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer ${
+                              index % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50/50 dark:bg-slate-800/30'
+                            }`}
+                            onClick={() => handleViewApplication(app)}
+                          >
+                            <TableCell>
+                              <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-gradient-to-br from-primary/20 to-primary/10 rounded-full flex items-center justify-center">
+                                  <User className="w-5 h-5 text-primary" />
+                                </div>
+                                <div>
+                                  <p className="font-medium text-slate-900 dark:text-slate-100">
+                                    {app.first_name} {app.last_name}
+                                  </p>
+                                  <p className="text-sm text-slate-500 dark:text-slate-400">
+                                    {app.email}
+                                  </p>
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={`${getStatusColor(app.status)} font-medium`}>
+                                {getStatusIcon(app.status)}
+                                <span className="ml-1 capitalize">{app.status}</span>
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                                <Calendar className="w-4 h-4" />
+                                <span className="text-sm">
+                                  {app.submitted_at ? new Date(app.submitted_at).toLocaleDateString() : '-'}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <Button 
+                                  size="sm" 
+                                  variant="outline" 
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    handleViewApplication(app)
+                                  }}
+                                  className="hover:bg-primary hover:text-primary-foreground transition-colors"
+                                >
+                                  <Eye className="w-4 h-4 mr-1" />
+                                  View
+                                </Button>
+                                <ChevronRight className="w-4 h-4 text-slate-400" />
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </Card>
       </div>
