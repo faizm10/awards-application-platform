@@ -17,6 +17,8 @@ import {
   Plus,
   Trophy,
   Star,
+  Calendar,
+  Eye,
 } from "lucide-react";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
@@ -52,8 +54,11 @@ const AdminDashboard = () => {
   const [user, setUser] = useState<any>(null);
   const [applications, setApplications] = useState<any[]>([]);
   const [awards, setAwards] = useState<any[]>([]);
+  const [reviews, setReviews] = useState<any[]>([]);
+  const [reviewers, setReviewers] = useState<any[]>([]);
   const [showCreateAwardModal, setShowCreateAwardModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [reviewerActivityFilter, setReviewerActivityFilter] = useState("all");
 
   // Form state for creating new award
   const [awardForm, setAwardForm] = useState({
@@ -160,8 +165,7 @@ const AdminDashboard = () => {
     placeholder: "",
   });
 
-  // 1. Add state for reviews
-  const [reviews, setReviews] = useState<any[]>([]);
+
 
   // 1. Add state for editing
   const [editAward, setEditAward] = useState<any>(null);
@@ -277,6 +281,20 @@ const AdminDashboard = () => {
       if (!error && data) setReviews(data);
     };
     fetchReviews();
+  }, []);
+
+  // 3. Fetch reviewers in useEffect
+  useEffect(() => {
+    const fetchReviewers = async () => {
+      const supabase = createClient();
+      const { data, error } = await supabase
+        .from("users")
+        .select("id, full_name, email")
+        .eq("role", "reviewer")
+        .order("full_name", { ascending: true });
+      if (!error && data) setReviewers(data);
+    };
+    fetchReviewers();
   }, []);
 
   const getStatusIcon = (status: any) => {
@@ -1385,58 +1403,173 @@ const AdminDashboard = () => {
             </div>
           </div>
         )}
+        
+
         {activeTab === "reviewer-activity" && (
           <div className="space-y-6">
+            {/* Reviewer Activity Header */}
             <div className="card-modern p-6">
-              <h3 className="text-xl font-bold mb-4 text-foreground">
-                Reviewer Activity
-              </h3>
-              <div className="overflow-x-auto">
-                <Table className="w-full text-sm">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-foreground">
+                  Reviewer Activity
+                </h3>
+                <div className="flex items-center gap-4">
+                  <Select value={reviewerActivityFilter} onValueChange={setReviewerActivityFilter}>
+                    <SelectTrigger className="w-48">
+                      <Filter className="w-4 h-4 mr-2" />
+                      <SelectValue placeholder="Filter by award" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Awards</SelectItem>
+                      {awards.map((award) => (
+                        <SelectItem key={award.id} value={award.id}>
+                          {award.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Reviewer Activity Table */}
+              <div className="rounded-lg border border-border overflow-hidden">
+                <Table>
                   <TableHeader>
-                    <TableRow className="border-b border-border">
-                      <TableHead>Reviewer</TableHead>
-                      <TableHead>Email</TableHead>
-                      <TableHead>Award</TableHead>
-                      <TableHead>Application</TableHead>
-                      <TableHead>Rating</TableHead>
-                      <TableHead>Comments</TableHead>
-                      <TableHead>Date</TableHead>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="font-semibold">Reviewer</TableHead>
+                      <TableHead className="font-semibold">Applicant</TableHead>
+                      <TableHead className="font-semibold">Award</TableHead>
+                      <TableHead className="font-semibold">Decision</TableHead>
+                      <TableHead className="font-semibold">Review Date</TableHead>
+                      <TableHead className="font-semibold">Comments</TableHead>
+                      <TableHead className="font-semibold">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {reviews.map((review) => (
-                      <TableRow
-                        key={review.id}
-                        className="border-b border-border"
-                      >
-                        <TableCell>
-                          {review.reviewer?.full_name || "-"}
-                        </TableCell>
-                        <TableCell>{review.reviewer?.email || "-"}</TableCell>
-                        <TableCell>
-                          {review.application?.award?.title || "-"}
-                        </TableCell>
-                        <TableCell>
-                          {review.application
-                            ? `${review.application.first_name} ${review.application.last_name}`
-                            : "-"}
-                        </TableCell>
-                        <TableCell>{review.rating}</TableCell>
-                        <TableCell>{review.comments}</TableCell>
-                        <TableCell>
-                          {review.created_at
-                            ? new Date(review.created_at).toLocaleDateString()
-                            : "-"}
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {reviews
+                      .filter((review) => 
+                        reviewerActivityFilter === "all" || 
+                        review.application?.award_id === reviewerActivityFilter
+                      )
+                      .map((review, index) => (
+                        <TableRow 
+                          key={review.id} 
+                          className={`transition-all duration-200 hover:bg-muted/30 ${
+                            index % 2 === 0 ? 'bg-background' : 'bg-muted/20'
+                          }`}
+                        >
+                          <TableCell>
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
+                                <Users className="w-4 h-4 text-primary" />
+                              </div>
+                              <div>
+                                <p className="font-medium text-foreground">
+                                  {review.reviewer?.full_name || 'Unknown Reviewer'}
+                                </p>
+                                <p className="text-sm text-muted-foreground">
+                                  {review.reviewer?.email || 'No email'}
+                                </p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium text-foreground">
+                                {review.application?.first_name} {review.application?.last_name}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                {review.application?.email}
+                              </p>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <p className="font-medium text-foreground">
+                                {review.application?.award?.title || 'Unknown Award'}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                {review.application?.award?.code || 'No code'}
+                              </p>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge 
+                              className={`font-medium ${
+                                review.shortlisted 
+                                  ? 'bg-green-100 text-green-800 border-green-200' 
+                                  : 'bg-red-100 text-red-800 border-red-200'
+                              }`}
+                            >
+                              {review.shortlisted ? (
+                                <>
+                                  <CheckCircle className="w-3 h-3 mr-1" />
+                                  Shortlisted
+                                </>
+                              ) : (
+                                <>
+                                  <XCircle className="w-3 h-3 mr-1" />
+                                  Not Shortlisted
+                                </>
+                              )}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <Calendar className="w-4 h-4" />
+                              <span className="text-sm">
+                                {new Date(review.created_at).toLocaleDateString()}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="max-w-xs">
+                              {review.comments ? (
+                                <p className="text-sm text-foreground line-clamp-2">
+                                  {review.comments}
+                                </p>
+                              ) : (
+                                <p className="text-sm text-muted-foreground italic">
+                                  No comments
+                                </p>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => router.push(`/reviewer/${review.application_id}`)}
+                              className="hover:bg-primary hover:text-primary-foreground transition-colors"
+                            >
+                              <Eye className="w-4 h-4 mr-1" />
+                              View Review
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
                   </TableBody>
                 </Table>
               </div>
+
+              {/* Empty State */}
+              {reviews.filter((review) => 
+                reviewerActivityFilter === "all" || 
+                review.application?.award_id === reviewerActivityFilter
+              ).length === 0 && (
+                <div className="text-center py-12">
+                  <Star className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">
+                    {reviewerActivityFilter === "all" 
+                      ? "No review activity found yet." 
+                      : "No reviews found for this award."}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         )}
+
         {activeTab === "admins" && <AdminUsersTable />}
       </div>
 
