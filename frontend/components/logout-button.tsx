@@ -34,6 +34,7 @@ export function LogoutButton() {
         disabled={isLoading}
         className="text-red-500 hover:text-red-600 hover:bg-red-50 disabled:opacity-50"
       >
+        Sign Out
         <LogOut className="h-4 w-4" />
       </Button>
     </>

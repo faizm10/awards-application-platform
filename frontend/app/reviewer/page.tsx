@@ -30,8 +30,10 @@ import { Textarea } from '@/components/ui/textarea'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner';
 import { LogoutButton } from "@/components/logout-button";
+import { useRouter } from 'next/navigation';
 
 const Reviewer = () => {
+  const router = useRouter()
   const [user, setUser] = useState<any>(null)
   const [applications, setApplications] = useState<any[]>([])
   const [filteredApplications, setFilteredApplications] = useState<any[]>([])
@@ -43,7 +45,7 @@ const Reviewer = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [activeTab, setActiveTab] = useState('submitted')
-  const [rating, setRating] = useState(0)
+  const [shortlisted, setShortlisted] = useState<boolean | null>(null)
   const [comments, setComments] = useState('')
   const [viewMode, setViewMode] = useState<'list' | 'details'>('list')
   const [submittingReview, setSubmittingReview] = useState(false);
@@ -92,7 +94,7 @@ const Reviewer = () => {
     setSelectedApp(app)
     setViewMode('details')
     setDetailsLoading(true)
-    setRating(0)
+    setShortlisted(null)
     setComments('')
 
     // Debug: Log the application object and file URLs
@@ -102,10 +104,27 @@ const Reviewer = () => {
     // console.log('certificate_url:', app.certificate_url);
 
     const supabase = createClient()
+    
+    // Fetch award and required fields
     const { data: award } = await supabase.from('awards').select('*').eq('id', app.award_id).single()
     setAwardInfo(award)
     const { data: fields } = await supabase.from('award_required_fields').select('*').eq('award_id', app.award_id)
     setRequiredFields(fields || [])
+    
+    // If application is already reviewed, fetch the existing review
+    if (app.status === 'reviewed') {
+      const { data: review } = await supabase
+        .from('reviews')
+        .select('*')
+        .eq('application_id', app.id)
+        .single()
+      
+      if (review) {
+        setShortlisted(review.shortlisted)
+        setComments(review.comments || '')
+      }
+    }
+    
     setDetailsLoading(false)
   }
 
@@ -114,7 +133,7 @@ const Reviewer = () => {
     setSelectedApp(null)
     setAwardInfo(null)
     setRequiredFields([])
-    setRating(0)
+    setShortlisted(null)
     setComments('')
   }
 
@@ -126,7 +145,7 @@ const Reviewer = () => {
       const { error: reviewError } = await supabase.from('reviews').insert({
         application_id: selectedApp.id,
         reviewer_id: user.id,
-        rating,
+        shortlisted,
         comments,
       });
       if (reviewError) {
@@ -299,49 +318,86 @@ const Reviewer = () => {
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base flex items-center gap-2">
                       <Star className="w-4 h-4" />
-                      Review
+                      {selectedApp.status === 'reviewed' ? 'Review Details' : 'Review'}
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
-                      <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">Rating</p>
-                      <div className="flex items-center gap-1">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <button
-                            key={star}
-                            onClick={() => setRating(star)}
-                            className={`w-8 h-8 rounded-full transition-all duration-200 ${
-                              star <= rating 
-                                ? 'text-yellow-400 hover:text-yellow-500 scale-110' 
-                                : 'text-slate-300 hover:text-slate-400'
-                            }`}
-                          >
-                            <Star className="w-full h-full" fill={star <= rating ? 'currentColor' : 'none'} />
-                          </button>
-                        ))}
+                      <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">Shortlisted</p>
+                      {selectedApp.status === 'reviewed' && (
+                        <div className="mb-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border">
+                          <div className="flex items-center gap-2 mb-2">
+                            <CheckCircle2 className="w-4 h-4 text-green-600" />
+                            <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                              Review Decision: {shortlisted ? 'Shortlisted' : 'Not Shortlisted'}
+                            </p>
+                          </div>
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            This application has already been reviewed
+                          </p>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant={shortlisted === true ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setShortlisted(true)}
+                          disabled={selectedApp.status === 'reviewed'}
+                          className="flex-1"
+                        >
+                          <CheckCircle2 className="w-4 h-4 mr-2" />
+                          Shortlisted
+                        </Button>
+                        <Button
+                          variant={shortlisted === false ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setShortlisted(false)}
+                          disabled={selectedApp.status === 'reviewed'}
+                          className="flex-1"
+                        >
+                          <XCircle className="w-4 h-4 mr-2" />
+                          Not Shortlisted
+                        </Button>
                       </div>
                     </div>
                     
                     <div>
                       <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">Comments</p>
+                      {selectedApp.status === 'reviewed' && comments && (
+                        <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                          <p className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-1">Review Notes:</p>
+                          <p className="text-sm text-blue-800 dark:text-blue-200 leading-relaxed">
+                            {comments}
+                          </p>
+                        </div>
+                      )}
                       <Textarea
                         value={comments}
                         onChange={(e) => setComments(e.target.value)}
                         placeholder="Add your review comments..."
+                        disabled={selectedApp.status === 'reviewed'}
                         className="min-h-24 resize-none text-sm"
                       />
                     </div>
                     
                     <div className="flex flex-col gap-2">
-                      <Button 
-                        onClick={handleSubmitReview}
-                        disabled={rating === 0 || submittingReview}
-                        size="sm"
-                        className="w-full"
-                      >
-                        <CheckCircle2 className="w-4 h-4 mr-2" />
-                        {submittingReview ? 'Submitting...' : 'Submit Review'}
-                      </Button>
+                      {selectedApp.status === 'reviewed' ? (
+                        <div className="text-center py-2">
+                          <p className="text-xs text-slate-500 dark:text-slate-400">
+                            Review already submitted
+                          </p>
+                        </div>
+                      ) : (
+                        <Button 
+                          onClick={handleSubmitReview}
+                          disabled={shortlisted === null || submittingReview}
+                          size="sm"
+                          className="w-full"
+                        >
+                          <CheckCircle2 className="w-4 h-4 mr-2" />
+                          {submittingReview ? 'Submitting...' : 'Submit Review'}
+                        </Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -734,12 +790,12 @@ const Reviewer = () => {
                                   variant="outline" 
                                   onClick={(e) => {
                                     e.stopPropagation()
-                                    handleViewApplication(app)
+                                    router.push(`/reviewer/${app.id}`)
                                   }}
                                   className="hover:bg-primary hover:text-primary-foreground transition-colors"
                                 >
                                   <Eye className="w-4 h-4 mr-1" />
-                                  View
+                                  View Review
                                 </Button>
                                 <ChevronRight className="w-4 h-4 text-slate-400" />
                               </div>
