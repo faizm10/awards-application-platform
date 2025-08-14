@@ -229,11 +229,11 @@ const AwardDetailPage = () => {
             </p>
           </section>
 
-          {/* Application Requirements Section */}
-          {requiredFields.length > 0 && (
-            <section className="card-modern p-6">
-              <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                <svg width="20" height="20" fill="none" viewBox="0 0 24 24">
+          {/* Application Requirements Section - Only show when user is not logged in */}
+          {requiredFields.length > 0 && !user && (
+            <section className="card-modern p-4">
+              <h2 className="text-lg font-bold mb-3 flex items-center gap-2">
+                <svg width="18" height="18" fill="none" viewBox="0 0 24 24">
                   <rect
                     x="4"
                     y="4"
@@ -252,120 +252,18 @@ const AwardDetailPage = () => {
                 </svg>
                 Application Requirements
               </h2>
-              <div className="space-y-4">
-                <p className="text-sm text-muted-foreground mb-4">
-                  The following information will be required when you apply for
-                  this award:
-                </p>
-                <div className="grid gap-3">
-                  {requiredFields.map((field) => (
-                    <div
-                      key={field.id}
-                      className="flex items-start gap-3 p-3 bg-muted/30 rounded-lg"
-                    >
-                      <div className="flex-shrink-0 mt-1">
-                        {field.type === "file" ? (
-                          <svg
-                            width="16"
-                            height="16"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            className="text-blue-500"
-                          >
-                            <path
-                              d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                            <polyline
-                              points="14,2 14,8 20,8"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                          </svg>
-                        ) : field.type === "textarea" ||
-                          field.field_config?.type === "essay" ? (
-                          <svg
-                            width="16"
-                            height="16"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            className="text-green-500"
-                          >
-                            <path
-                              d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                            <polyline
-                              points="14,2 14,8 20,8"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                            />
-                            <line
-                              x1="16"
-                              y1="13"
-                              x2="8"
-                              y2="13"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                            />
-                            <line
-                              x1="16"
-                              y1="17"
-                              x2="8"
-                              y2="17"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                              strokeLinecap="round"
-                            />
-                          </svg>
-                        ) : (
-                          <svg
-                            width="16"
-                            height="16"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            className="text-gray-500"
-                          >
-                            <rect
-                              x="3"
-                              y="11"
-                              width="18"
-                              height="2"
-                              rx="1"
-                              stroke="currentColor"
-                              strokeWidth="2"
-                            />
-                          </svg>
-                        )}
-                      </div>
+              <div className="bg-muted/20 rounded-lg p-3 text-sm text-muted-foreground">
+                <div className="space-y-1">
+                  {requiredFields.map((field, index) => (
+                    <div key={field.id} className="flex items-start gap-2">
+                      <span className="text-muted-foreground">•</span>
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium text-sm">
-                            {field.label}
-                          </span>
-                    
-                         
-                        </div>
+                        <span className="font-medium text-foreground">{field.label}</span>
                         {field.field_config?.question && (
-                          <p className="text-xs text-muted-foreground mt-1 italic">
-                            "{field.field_config.question}"
-                          </p>
+                          <span className="text-muted-foreground">: "{field.field_config.question}"</span>
                         )}
                         {field.field_config?.word_limit && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Word limit: {field.field_config.word_limit} words
-                          </p>
+                          <span className="text-muted-foreground"> ({field.field_config.word_limit} words)</span>
                         )}
                       </div>
                     </div>

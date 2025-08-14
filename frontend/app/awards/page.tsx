@@ -151,31 +151,41 @@ function AwardsPage() {
         </div>
 
         {/* Hero Section */}
-        <div className="mb-16">
-          <div className="text-center mb-12 animate-slide-in-up">
-            <h1 className="text-6xl md:text-7xl font-bold text-foreground mb-6">
+        <div className="mb-12">
+          <div className="text-center mb-8 animate-slide-in-up">
+            <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
               Browse <span className="gradient-text">Awards</span>
             </h1>
           </div>
 
           {/* Search Section */}
-          <div className="max-w-4xl mx-auto animate-slide-in-up">
-            <div className="relative mb-8">
-              <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-blue-600/20 rounded-2xl blur-xl" />
-              <div className="relative bg-card/50 backdrop-blur-sm border border-border/50 rounded-2xl p-6">
-                <div className="flex flex-col md:flex-row gap-4 mb-6">
+          <div className="max-w-3xl mx-auto animate-slide-in-up">
+            <div className="relative mb-6">
+              <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-blue-600/20 rounded-xl blur-lg" />
+              <div className="relative bg-card/50 backdrop-blur-sm border border-border/50 rounded-xl p-4">
+                <div className="flex flex-col md:flex-row gap-3 mb-4">
                   <div className="flex-1 relative group">
-                    <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground h-5 w-5 group-focus-within:text-primary transition-colors" />
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4 group-focus-within:text-primary transition-colors" />
                     <Input
                       placeholder="Search awards, organizations, or keywords..."
-                      className="pl-12 h-12 bg-background/50 border-border/50 text-lg focus:ring-2 focus:ring-primary/20"
+                      className="pl-10 h-10 bg-background/50 border-border/50 text-base focus:ring-2 focus:ring-primary/20"
                       value={filters.searchTerm}
                       onChange={(e) => handleSearch(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          // Scroll to awards list
+                          const awardsSection = document.getElementById('awards-section');
+                          if (awardsSection) {
+                            awardsSection.scrollIntoView({ behavior: 'smooth' });
+                          }
+                        }
+                      }}
                     />
                   </div>
                   <Button
-                    size="lg"
-                    className="btn-primary h-12 px-8"
+                    size="default"
+                    className="btn-primary h-10 px-6"
                     onClick={() =>
                       setFilters((prev) => ({
                         ...prev,
@@ -183,7 +193,7 @@ function AwardsPage() {
                       }))
                     }
                   >
-                    <Filter className="mr-2 h-5 w-5" />
+                    <Filter className="mr-2 h-4 w-4" />
                     Advanced Filters
                     {getActiveFiltersCount() > 0 && (
                       <Badge variant="secondary" className="ml-2">
@@ -322,7 +332,7 @@ function AwardsPage() {
         </div>
 
         {/* Awards Section */}
-        <div className="animate-slide-in-up">
+        <div id="awards-section" className="animate-slide-in-up">
           {/* Morphing decoration */}
           <div className="absolute top-20 right-10 w-32 h-32 opacity-10 -z-10">
             <div className="morphing-shape" />

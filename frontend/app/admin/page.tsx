@@ -44,18 +44,24 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { LogoutButton } from "@/components/logout-button";
 import AdminUsersTable from "@/components/AdminUsersTable";
+import OverviewTab from "@/components/admin/OverviewTab";
+import ApplicationsTab from "@/components/admin/ApplicationsTab";
+import AwardsTab from "@/components/admin/AwardsTab";
+import ReviewerActivityTab from "@/components/admin/ReviewerActivityTab";
 import { useRouter } from "next/navigation";
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [filterAward, setFilterAward] = useState("all");
   const [mounted, setMounted] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [applications, setApplications] = useState<any[]>([]);
   const [awards, setAwards] = useState<any[]>([]);
   const [reviews, setReviews] = useState<any[]>([]);
   const [reviewers, setReviewers] = useState<any[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
   const [showCreateAwardModal, setShowCreateAwardModal] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [reviewerActivityFilter, setReviewerActivityFilter] = useState("all");
@@ -165,8 +171,6 @@ const AdminDashboard = () => {
     placeholder: "",
   });
 
-
-
   // 1. Add state for editing
   const [editAward, setEditAward] = useState<any>(null);
   const [showEditAwardModal, setShowEditAwardModal] = useState(false);
@@ -175,6 +179,12 @@ const AdminDashboard = () => {
   const [applicationCounts, setApplicationCounts] = useState<{
     [key: string]: number;
   }>({});
+
+  // Application edit state
+  const [selectedApplication, setSelectedApplication] = useState<any>(null);
+  const [showApplicationModal, setShowApplicationModal] = useState(false);
+  const [applicationForm, setApplicationForm] = useState<any>({});
+  const [isEditingApplication, setIsEditingApplication] = useState(false);
 
   const router = useRouter();
 
@@ -250,8 +260,22 @@ const AdminDashboard = () => {
     }
   };
 
+  // Fetch categories from the API
+  const fetchCategories = async () => {
+    try {
+      const response = await fetch("/api/awards/filter-options");
+      if (response.ok) {
+        const data = await response.json();
+        setCategories(data.categories || []);
+      }
+    } catch (error) {
+      console.error("Error fetching categories:", error);
+    }
+  };
+
   useEffect(() => {
     fetchAwards();
+    fetchCategories();
   }, []);
 
   // Calculate application counts when both applications and awards are loaded
@@ -664,11 +688,11 @@ const AdminDashboard = () => {
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="scholarship">Scholarship</SelectItem>
-                      <SelectItem value="grant">Grant</SelectItem>
-                      <SelectItem value="bursary">Bursary</SelectItem>
-                      <SelectItem value="fellowship">Fellowship</SelectItem>
-                      <SelectItem value="award">Award</SelectItem>
+                      {categories.map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {category}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -853,9 +877,9 @@ const AdminDashboard = () => {
                                 </Badge>
                               )}
                             </div>
-                            <p className="text-xs text-muted-foreground font-mono mb-1">
+                            {/* <p className="text-xs text-muted-foreground font-mono mb-1">
                               {field.field_name}
-                            </p>
+                            </p> */}
                             {field.field_config?.question && (
                               <div className="mt-2 p-2 bg-muted/50 rounded text-xs">
                                 <span className="font-medium text-muted-foreground">
@@ -1096,478 +1120,60 @@ const AdminDashboard = () => {
 
         {/* Content based on active tab */}
         {activeTab === "overview" && (
-          <div className="space-y-8">
-            {/* Quick Actions */}
-            <div className="card-modern p-6">
-              <h3 className="text-xl font-bold mb-4 text-foreground">
-                Quick Actions
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <button
-                  className="btn-primary p-4 rounded-lg text-left"
-                  onClick={() => setShowCreateAwardModal(true)}
-                >
-                  <Award className="w-6 h-6 mb-2" />
-                  <div className="font-medium">Create New Award</div>
-                  <div className="text-sm opacity-80">
-                    Add scholarship or grant
-                  </div>
-                </button>
-                <button className="btn-secondary p-4 rounded-lg text-left">
-                  <FileText className="w-6 h-6 mb-2" />
-                  <div className="font-medium">Review Applications</div>
-                  <div className="text-sm opacity-80">
-                    Process pending requests
-                  </div>
-                </button>
-                <button className="btn-secondary p-4 rounded-lg text-left">
-                  <Users className="w-6 h-6 mb-2" />
-                  <div className="font-medium">Manage Users</div>
-                  <div className="text-sm opacity-80">Add or remove admins</div>
-                </button>
-              </div>
-            </div>
-
-            {/* Recent Activity */}
-            <div className="card-modern p-6">
-              <h3 className="text-xl font-bold mb-4 text-foreground">
-                Recent Activity
-              </h3>
-              <div className="space-y-4">
-                {applications.map((app: any) => (
-                  <div
-                    key={app.id}
-                    className="flex items-center gap-4 p-4 bg-muted/30 rounded-lg"
-                  >
-                    {getStatusIcon(app.status)}
-                    <div className="flex-1">
-                      <p className="font-medium">
-                        {app.student?.full_name} applied for {app.award?.title}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {new Date(app.created_at).toLocaleDateString()}
-                      </p>
-                    </div>
-                    <span
-                      className={`px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(
-                        app.status
-                      )}`}
-                    >
-                      {app.status}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+          <OverviewTab
+            applications={applications}
+            awards={awards}
+            reviews={reviews}
+            applicationCounts={applicationCounts}
+          />
         )}
 
         {activeTab === "applications" && (
-          <div className="space-y-6">
-            {/* Application Summary */}
-            <div className="card-modern p-6">
-              <h3 className="text-xl font-bold mb-4 text-foreground">
-                Application Summary
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {awards.map((award: any) => {
-                  const applicationCount = applicationCounts[award.id] || 0;
-                  return (
-                    <div
-                      key={award.id}
-                      className="bg-muted/30 p-4 rounded-lg border"
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium text-sm truncate">
-                          {award.title}
-                        </h4>
-                        <Badge variant="secondary" className="text-xs">
-                          {applicationCount}{" "}
-                          {applicationCount === 1
-                            ? "application"
-                            : "applications"}
-                        </Badge>
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        {award.code} • ${award.value?.toLocaleString()}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Search and Filter */}
-            <div className="card-modern p-6">
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <input
-                    type="text"
-                    placeholder="Search applications..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
-                </div>
-                <div className="relative">
-                  <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <select
-                    value={filterStatus}
-                    onChange={(e) => setFilterStatus(e.target.value)}
-                    className="pl-10 pr-8 py-2 border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring appearance-none"
-                  >
-                    <option value="all">All Status</option>
-                    <option value="pending">Pending</option>
-                    <option value="approved">Approved</option>
-                    <option value="rejected">Rejected</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            {/* Applications Table */}
-            <div className="card-modern p-6">
-              <h3 className="text-xl font-bold mb-4 text-foreground">
-                Applications
-              </h3>
-              <div className="overflow-x-auto">
-                <Table className="w-full text-sm">
-                  <TableHeader>
-                    <TableRow className="border-b border-border">
-                      <TableHead className="text-left py-3 px-4 font-medium">
-                        Student
-                      </TableHead>
-                      <TableHead className="text-left py-3 px-4 font-medium">
-                        Award
-                      </TableHead>
-                      <TableHead className="text-left py-3 px-4 font-medium">
-                        Status
-                      </TableHead>
-                      <TableHead className="text-left py-3 px-4 font-medium">
-                        Submitted
-                      </TableHead>
-                      <TableHead className="text-left py-3 px-4 font-medium">
-                        Value
-                      </TableHead>
-                      <TableHead className="text-left py-3 px-4 font-medium">
-                        Actions
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {applications.map((app: any) => (
-                      <TableRow
-                        key={app.id}
-                        className="border-b border-border hover:bg-muted/30 transition-colors"
-                      >
-                        <TableCell className="py-3 px-4">
-                          <div>
-                            <div className="font-medium">
-                              {app.student?.full_name}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {app.student?.email}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-3 px-4">
-                          <div>
-                            <div className="font-medium">
-                              {app.award?.title}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {app.award?.code}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-3 px-4">
-                          <span
-                            className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium border ${getStatusColor(
-                              app.status
-                            )}`}
-                          >
-                            {getStatusIcon(app.status)}
-                            {app.status}
-                          </span>
-                        </TableCell>
-                        <TableCell className="py-3 px-4">
-                          {app.submitted_at
-                            ? new Date(app.submitted_at).toLocaleDateString()
-                            : "-"}
-                        </TableCell>
-                        <TableCell className="py-3 px-4">
-                          <span className="font-medium">
-                            ${app.award?.value?.toLocaleString()}
-                          </span>
-                        </TableCell>
-                        <TableCell className="py-3 px-4">
-                          <button className="p-1 hover:bg-muted rounded">
-                            <MoreVertical className="w-4 h-4" />
-                          </button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
-          </div>
+          <ApplicationsTab
+            applications={applications}
+            awards={awards}
+            searchTerm={searchTerm}
+            filterStatus={filterStatus}
+            filterAward={filterAward}
+            onSearchChange={setSearchTerm}
+            onFilterStatusChange={setFilterStatus}
+            onFilterAwardChange={setFilterAward}
+            onViewApplication={(app) => {
+              setSelectedApplication(app);
+              setApplicationForm({
+                first_name: app.first_name || "",
+                last_name: app.last_name || "",
+                email: app.email || "",
+                student_id_text: app.student_id_text || "",
+                major_program: app.major_program || "",
+                status: app.status || "draft",
+                ...app.essay_responses,
+              });
+              setShowApplicationModal(true);
+            }}
+            applicationCounts={applicationCounts}
+          />
         )}
         {activeTab === "awards" && (
-          <div className="space-y-6">
-            {/* Search and Filter */}
-            <div className="card-modern p-6">
-              <div className="flex flex-col sm:flex-row gap-4">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <input
-                    type="text"
-                    placeholder="Search awards..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Awards Table */}
-            <div className="card-modern p-6">
-              <h3 className="text-xl font-bold mb-4 text-foreground">
-                Awards List
-              </h3>
-              <div className="overflow-x-auto">
-                <Table className="w-full text-sm">
-                  <TableHeader>
-                    <TableRow className="border-b border-border">
-                      <TableHead className="text-left py-3 px-4 font-medium">
-                        Title
-                      </TableHead>
-                      <TableHead className="text-left py-3 px-4 font-medium">
-                        Value
-                      </TableHead>
-                      <TableHead className="text-left py-3 px-4 font-medium">
-                        Category
-                      </TableHead>
-                      <TableHead className="text-left py-3 px-4 font-medium">
-                        Deadline
-                      </TableHead>
-                      <TableHead className="text-left py-3 px-4 font-medium">
-                        Actions
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {awards.map((app: any) => (
-                      <TableRow
-                        key={app.id}
-                        className="border-b border-border hover:bg-muted/30 transition-colors"
-                      >
-                        <TableCell className="py-3 px-4">
-                          <div>
-                            <div className="font-medium">{app.title}</div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-3 px-4">
-                          <div>
-                            <div className="font-medium">{app.value}</div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="py-3 px-4">
-                          {app.category}
-                        </TableCell>
-                        <TableCell className="py-3 px-4">
-                          {app.deadline
-                            ? new Date(app.deadline).toLocaleDateString()
-                            : "-"}
-                        </TableCell>
-                        <TableCell className="py-3 px-4">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => {
-                              setEditAward(app);
-                              setEditAwardForm({ ...app });
-                              setShowEditAwardModal(true);
-                            }}
-                          >
-                            Edit
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
-          </div>
+          <AwardsTab
+            awards={awards}
+            searchTerm={searchTerm}
+            onSearchChange={setSearchTerm}
+            onEditAward={(award) => {
+              setEditAward(award);
+              setEditAwardForm({ ...award });
+              setShowEditAwardModal(true);
+            }}
+          />
         )}
-        
 
         {activeTab === "reviewer-activity" && (
-          <div className="space-y-6">
-            {/* Reviewer Activity Header */}
-            <div className="card-modern p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-xl font-bold text-foreground">
-                  Reviewer Activity
-                </h3>
-                <div className="flex items-center gap-4">
-                  <Select value={reviewerActivityFilter} onValueChange={setReviewerActivityFilter}>
-                    <SelectTrigger className="w-48">
-                      <Filter className="w-4 h-4 mr-2" />
-                      <SelectValue placeholder="Filter by award" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All Awards</SelectItem>
-                      {awards.map((award) => (
-                        <SelectItem key={award.id} value={award.id}>
-                          {award.title}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {/* Reviewer Activity Table */}
-              <div className="rounded-lg border border-border overflow-hidden">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="font-semibold">Reviewer</TableHead>
-                      <TableHead className="font-semibold">Applicant</TableHead>
-                      <TableHead className="font-semibold">Award</TableHead>
-                      <TableHead className="font-semibold">Decision</TableHead>
-                      <TableHead className="font-semibold">Review Date</TableHead>
-                      <TableHead className="font-semibold">Comments</TableHead>
-                      <TableHead className="font-semibold">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {reviews
-                      .filter((review) => 
-                        reviewerActivityFilter === "all" || 
-                        review.application?.award_id === reviewerActivityFilter
-                      )
-                      .map((review, index) => (
-                        <TableRow 
-                          key={review.id} 
-                          className={`transition-all duration-200 hover:bg-muted/30 ${
-                            index % 2 === 0 ? 'bg-background' : 'bg-muted/20'
-                          }`}
-                        >
-                          <TableCell>
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
-                                <Users className="w-4 h-4 text-primary" />
-                              </div>
-                              <div>
-                                <p className="font-medium text-foreground">
-                                  {review.reviewer?.full_name || 'Unknown Reviewer'}
-                                </p>
-                                <p className="text-sm text-muted-foreground">
-                                  {review.reviewer?.email || 'No email'}
-                                </p>
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium text-foreground">
-                                {review.application?.first_name} {review.application?.last_name}
-                              </p>
-                              <p className="text-sm text-muted-foreground">
-                                {review.application?.email}
-                              </p>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium text-foreground">
-                                {review.application?.award?.title || 'Unknown Award'}
-                              </p>
-                              <p className="text-sm text-muted-foreground">
-                                {review.application?.award?.code || 'No code'}
-                              </p>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge 
-                              className={`font-medium ${
-                                review.shortlisted 
-                                  ? 'bg-green-100 text-green-800 border-green-200' 
-                                  : 'bg-red-100 text-red-800 border-red-200'
-                              }`}
-                            >
-                              {review.shortlisted ? (
-                                <>
-                                  <CheckCircle className="w-3 h-3 mr-1" />
-                                  Shortlisted
-                                </>
-                              ) : (
-                                <>
-                                  <XCircle className="w-3 h-3 mr-1" />
-                                  Not Shortlisted
-                                </>
-                              )}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2 text-muted-foreground">
-                              <Calendar className="w-4 h-4" />
-                              <span className="text-sm">
-                                {new Date(review.created_at).toLocaleDateString()}
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="max-w-xs">
-                              {review.comments ? (
-                                <p className="text-sm text-foreground line-clamp-2">
-                                  {review.comments}
-                                </p>
-                              ) : (
-                                <p className="text-sm text-muted-foreground italic">
-                                  No comments
-                                </p>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => router.push(`/reviewer/${review.application_id}`)}
-                              className="hover:bg-primary hover:text-primary-foreground transition-colors"
-                            >
-                              <Eye className="w-4 h-4 mr-1" />
-                              View Review
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                  </TableBody>
-                </Table>
-              </div>
-
-              {/* Empty State */}
-              {reviews.filter((review) => 
-                reviewerActivityFilter === "all" || 
-                review.application?.award_id === reviewerActivityFilter
-              ).length === 0 && (
-                <div className="text-center py-12">
-                  <Star className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">
-                    {reviewerActivityFilter === "all" 
-                      ? "No review activity found yet." 
-                      : "No reviews found for this award."}
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
+          <ReviewerActivityTab
+            reviews={reviews}
+            awards={awards}
+            reviewerActivityFilter={reviewerActivityFilter}
+            onReviewerActivityFilterChange={setReviewerActivityFilter}
+          />
         )}
 
         {activeTab === "admins" && <AdminUsersTable />}
@@ -1693,16 +1299,26 @@ const AdminDashboard = () => {
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="edit-category">Category</Label>
-                  <Input
-                    id="edit-category"
+                  <Select
                     value={editAwardForm.category}
-                    onChange={(e) =>
+                    onValueChange={(value) =>
                       setEditAwardForm((f: any) => ({
                         ...f,
-                        category: e.target.value,
+                        category: value,
                       }))
                     }
-                  />
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((category) => (
+                        <SelectItem key={category} value={category}>
+                          {category}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="space-y-2">
@@ -1746,6 +1362,277 @@ const AdminDashboard = () => {
                 </Button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Application Edit Modal */}
+      {showApplicationModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-background rounded-lg shadow-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-border">
+              <div className="flex items-center justify-between">
+                <h2 className="text-xl font-bold">
+                  {isEditingApplication ? "Editing" : "Viewing"} Application
+                </h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowApplicationModal(false)}
+                >
+                  <X className="w-4 h-4" />
+                </Button>
+              </div>
+              {selectedApplication && (
+                <div className="mt-2 text-sm text-muted-foreground">
+                  {selectedApplication.award?.title} •{" "}
+                  {selectedApplication.student?.full_name}
+                </div>
+              )}
+            </div>
+
+            <div className="p-6 space-y-6">
+              {selectedApplication && (
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    setIsEditingApplication(true);
+
+                    try {
+                      const supabase = createClient();
+
+                      // Separate essay responses from regular form data
+                      const regularFormData: any = {};
+                      const essayResponses: any = {};
+
+                      Object.keys(applicationForm).forEach((key) => {
+                        if (key.startsWith("essay_response_")) {
+                          essayResponses[key] = applicationForm[key];
+                        } else {
+                          regularFormData[key] = applicationForm[key];
+                        }
+                      });
+
+                      // Prepare update data
+                      const updateData = {
+                        first_name: regularFormData.first_name || "",
+                        last_name: regularFormData.last_name || "",
+                        email: regularFormData.email || "",
+                        student_id_text: regularFormData.student_id_text || "",
+                        major_program: regularFormData.major_program || "",
+                        status: regularFormData.status || "draft",
+                        essay_responses: essayResponses,
+                        updated_at: new Date().toISOString(),
+                      };
+
+                      console.log("Saving application data:", updateData);
+
+                      const { data, error } = await supabase
+                        .from("applications")
+                        .update(updateData)
+                        .eq("id", selectedApplication.id)
+                        .select();
+
+                      if (error) {
+                        console.error("Supabase error:", error);
+                        throw error;
+                      }
+
+                      console.log("Application saved successfully:", data);
+
+                      // Refresh applications data
+                      const { data: updatedApplications, error: refreshError } =
+                        await supabase
+                          .from("applications")
+                          .select("*, student:profiles(*), award:awards(*)")
+                          .order("submitted_at", { ascending: false });
+
+                      if (refreshError) {
+                        console.error(
+                          "Error refreshing applications:",
+                          refreshError
+                        );
+                      } else if (updatedApplications) {
+                        setApplications(updatedApplications);
+                        console.log("Applications list refreshed");
+                      }
+
+                      toast.success("Application updated successfully!");
+                      setShowApplicationModal(false);
+                    } catch (error) {
+                      console.error("Error updating application:", error);
+                      toast.error(
+                        `Failed to update application: ${
+                          error instanceof Error
+                            ? error.message
+                            : "Unknown error"
+                        }`
+                      );
+                    } finally {
+                      setIsEditingApplication(false);
+                    }
+                  }}
+                >
+                  {/* Basic Information */}
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-semibold border-b pb-2">
+                      Basic Information
+                    </h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="first_name">First Name</Label>
+                        <Input
+                          id="first_name"
+                          value={applicationForm.first_name || ""}
+                          onChange={(e) =>
+                            setApplicationForm((f: any) => ({
+                              ...f,
+                              first_name: e.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="last_name">Last Name</Label>
+                        <Input
+                          id="last_name"
+                          value={applicationForm.last_name || ""}
+                          onChange={(e) =>
+                            setApplicationForm((f: any) => ({
+                              ...f,
+                              last_name: e.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="email">Email</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          value={applicationForm.email || ""}
+                          onChange={(e) =>
+                            setApplicationForm((f: any) => ({
+                              ...f,
+                              email: e.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="student_id_text">Student ID</Label>
+                        <Input
+                          id="student_id_text"
+                          value={applicationForm.student_id_text || ""}
+                          onChange={(e) =>
+                            setApplicationForm((f: any) => ({
+                              ...f,
+                              student_id_text: e.target.value,
+                            }))
+                          }
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="major_program">Major/Program</Label>
+                      <Input
+                        id="major_program"
+                        value={applicationForm.major_program || ""}
+                        onChange={(e) =>
+                          setApplicationForm((f: any) => ({
+                            ...f,
+                            major_program: e.target.value,
+                          }))
+                        }
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="status">Status</Label>
+                      <Select
+                        value={applicationForm.status || "draft"}
+                        onValueChange={(value) =>
+                          setApplicationForm((f: any) => ({
+                            ...f,
+                            status: value,
+                          }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="draft">Draft</SelectItem>
+                          <SelectItem value="submitted">Submitted</SelectItem>
+                          <SelectItem value="reviewed">Reviewed</SelectItem>
+                          <SelectItem value="approved">Approved</SelectItem>
+                          <SelectItem value="rejected">Rejected</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Essay Responses */}
+                  {selectedApplication.award?.required_fields && (
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold border-b pb-2">
+                        Essay Responses
+                      </h3>
+                      {selectedApplication.award.required_fields.map(
+                        (field: any) => {
+                          const fieldKey = `essay_response_${field.id}`;
+                          return (
+                            <div key={field.id} className="space-y-2">
+                              <Label htmlFor={fieldKey}>{field.label}</Label>
+                              {field.field_config?.question && (
+                                <div className="p-3 bg-muted/50 rounded-lg border-l-4 border-primary">
+                                  <p className="text-sm font-medium">
+                                    {field.field_config.question}
+                                  </p>
+                                </div>
+                              )}
+                              <Textarea
+                                id={fieldKey}
+                                value={applicationForm[fieldKey] || ""}
+                                onChange={(e) =>
+                                  setApplicationForm((f: any) => ({
+                                    ...f,
+                                    [fieldKey]: e.target.value,
+                                  }))
+                                }
+                                rows={6}
+                                placeholder={`Enter your ${field.label.toLowerCase()}...`}
+                              />
+                              {field.field_config?.word_limit && (
+                                <div className="text-xs text-muted-foreground">
+                                  Word limit: {field.field_config.word_limit}{" "}
+                                  words
+                                </div>
+                              )}
+                            </div>
+                          );
+                        }
+                      )}
+                    </div>
+                  )}
+
+                  {/* Form Actions */}
+                  <div className="flex justify-end gap-4 pt-4 border-t">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setShowApplicationModal(false)}
+                    >
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={isEditingApplication}>
+                      {isEditingApplication ? "Saving..." : "Save Changes"}
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </div>
           </div>
         </div>
       )}
