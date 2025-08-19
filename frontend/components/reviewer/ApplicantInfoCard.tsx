@@ -96,3 +96,4 @@ const ApplicantInfoCard: React.FC<ApplicantInfoCardProps> = ({ application }) =>
 }
 
 export default ApplicantInfoCard
+

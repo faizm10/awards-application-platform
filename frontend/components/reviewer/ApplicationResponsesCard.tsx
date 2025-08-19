@@ -118,3 +118,4 @@ const ApplicationResponsesCard: React.FC<ApplicationResponsesCardProps> = ({
 }
 
 export default ApplicationResponsesCard
+
