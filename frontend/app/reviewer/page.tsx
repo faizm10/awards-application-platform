@@ -22,7 +22,15 @@ import {
   XCircle,
   AlertCircle,
   ArrowLeft,
-  ChevronRight
+  ArrowRight,
+  ChevronRight,
+  Info,
+  Target,
+  DollarSign,
+  Users,
+  BookOpen,
+  FileCheck,
+  BarChart3
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -31,6 +39,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { toast } from 'sonner';
 import { LogoutButton } from "@/components/logout-button";
 import { useRouter } from 'next/navigation';
+import ReviewSubmissionForm from '@/components/reviewer/ReviewSubmissionForm';
+import ApplicantInfoCard from '@/components/reviewer/ApplicantInfoCard';
+import AwardInfoCard from '@/components/reviewer/AwardInfoCard';
+import ApplicationResponsesCard from '@/components/reviewer/ApplicationResponsesCard';
+import DocumentViewer from '@/components/reviewer/DocumentViewer';
+import ReviewSummaryCard from '@/components/reviewer/ReviewSummaryCard';
 
 const Reviewer = () => {
   const router = useRouter()
@@ -38,6 +52,7 @@ const Reviewer = () => {
   const [applications, setApplications] = useState<any[]>([])
   const [filteredApplications, setFilteredApplications] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [currentAppIndex, setCurrentAppIndex] = useState(0)
   const [selectedApp, setSelectedApp] = useState<any>(null)
   const [awardInfo, setAwardInfo] = useState<any>(null)
   const [requiredFields, setRequiredFields] = useState<any[]>([])
@@ -45,10 +60,15 @@ const Reviewer = () => {
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [activeTab, setActiveTab] = useState('submitted')
-  const [shortlisted, setShortlisted] = useState<boolean | null>(null)
-  const [comments, setComments] = useState('')
-  const [viewMode, setViewMode] = useState<'list' | 'details'>('list')
-  const [submittingReview, setSubmittingReview] = useState(false);
+
+  const [viewMode, setViewMode] = useState<'list' | 'review'>('list')
+  const [submittingReview, setSubmittingReview] = useState(false)
+  const [reviewSummary, setReviewSummary] = useState({
+    total: 0,
+    shortlisted: 0,
+    notShortlisted: 0,
+    pending: 0
+  })
 
   useEffect(() => {
     const fetchUserAndApplications = async () => {
@@ -56,10 +76,22 @@ const Reviewer = () => {
       const { data: userData } = await supabase.auth.getUser()
       setUser(userData.user)
       if (userData.user) {
-        // Fetch both submitted and reviewed applications
+        // Fetch both submitted and reviewed applications with award info
         const { data, error } = await supabase
           .from('applications')
-          .select('*')
+          .select(`
+            *,
+            award:awards (
+              id,
+              title,
+              code,
+              value,
+              deadline,
+              category,
+              citizenship,
+              eligibility
+            )
+          `)
           .in('status', ['submitted', 'reviewed'])
           .order('created_at', { ascending: false })
         if (!error && data) {
@@ -90,18 +122,36 @@ const Reviewer = () => {
     setFilteredApplications(filtered)
   }, [searchTerm, statusFilter, activeTab, applications])
 
-  const handleViewApplication = async (app: any) => {
-    setSelectedApp(app)
-    setViewMode('details')
-    setDetailsLoading(true)
-    setShortlisted(null)
-    setComments('')
+  // Fetch review summary data
+  useEffect(() => {
+    const fetchReviewSummary = async () => {
+      const supabase = createClient()
+      const { data: reviews } = await supabase
+        .from('reviews')
+        .select('shortlisted')
+      
+      if (reviews) {
+        setReviewSummary({
+          total: reviews.length,
+          shortlisted: reviews.filter((r: any) => r.shortlisted).length,
+          notShortlisted: reviews.filter((r: any) => !r.shortlisted).length,
+          pending: applications.filter(app => app.status === 'submitted').length
+        })
+      }
+    }
+    
+    if (applications.length > 0) {
+      fetchReviewSummary()
+    }
+  }, [applications])
 
-    // Debug: Log the application object and file URLs
-    // console.log('Selected Application:', app);
-    // console.log('letter_url:', app.letter_url);
-    // console.log('international_intent_url:', app.international_intent_url);
-    // console.log('certificate_url:', app.certificate_url);
+  const handleViewApplication = async (app: any, index?: number) => {
+    if (index !== undefined) {
+      setCurrentAppIndex(index)
+    }
+    setSelectedApp(app)
+    setViewMode('review')
+    setDetailsLoading(true)
 
     const supabase = createClient()
     
@@ -111,20 +161,6 @@ const Reviewer = () => {
     const { data: fields } = await supabase.from('award_required_fields').select('*').eq('award_id', app.award_id)
     setRequiredFields(fields || [])
     
-    // If application is already reviewed, fetch the existing review
-    if (app.status === 'reviewed') {
-      const { data: review } = await supabase
-        .from('reviews')
-        .select('*')
-        .eq('application_id', app.id)
-        .single()
-      
-      if (review) {
-        setShortlisted(review.shortlisted)
-        setComments(review.comments || '')
-      }
-    }
-    
     setDetailsLoading(false)
   }
 
@@ -133,11 +169,25 @@ const Reviewer = () => {
     setSelectedApp(null)
     setAwardInfo(null)
     setRequiredFields([])
-    setShortlisted(null)
-    setComments('')
   }
 
-  const handleSubmitReview = async () => {
+  const handleNextApplication = () => {
+    if (currentAppIndex < filteredApplications.length - 1) {
+      const nextIndex = currentAppIndex + 1
+      setCurrentAppIndex(nextIndex)
+      handleViewApplication(filteredApplications[nextIndex], nextIndex)
+    }
+  }
+
+  const handlePreviousApplication = () => {
+    if (currentAppIndex > 0) {
+      const prevIndex = currentAppIndex - 1
+      setCurrentAppIndex(prevIndex)
+      handleViewApplication(filteredApplications[prevIndex], prevIndex)
+    }
+  }
+
+  const handleSubmitReview = async (shortlisted: boolean, comments: string) => {
     if (!selectedApp || !user) return;
     setSubmittingReview(true);
     try {
@@ -150,19 +200,26 @@ const Reviewer = () => {
       });
       if (reviewError) {
         toast.error('Failed to submit review.');
+        throw reviewError;
       } else {
-        // Update application status to reviewed (now allowed by DB)
+        // Update application status to reviewed
         const { error: statusError } = await supabase.from('applications').update({ status: 'reviewed' }).eq('id', selectedApp.id);
         if (statusError) {
           toast.error('Review submitted, but failed to update application status.');
+          throw statusError;
         } else {
-          toast.success('Review submitted and application marked as reviewed!');
+          toast.success('Review submitted successfully!');
+          // Move to next application if available
+          if (currentAppIndex < filteredApplications.length - 1) {
+            handleNextApplication()
+          } else {
+            handleBackToList()
+          }
         }
-        handleBackToList();
-        window.location.reload(); // Force full refresh to update dashboard
       }
     } catch (e) {
       toast.error('An error occurred while submitting review.');
+      throw e;
     } finally {
       setSubmittingReview(false);
     }
@@ -209,7 +266,7 @@ const Reviewer = () => {
     submitted: applications.filter(app => app.status === 'submitted').length,
   }
   
-  if (viewMode === 'details' && selectedApp) {
+  if (viewMode === 'review' && selectedApp) {
     // Gather all PDF/file fields (resume, letter, etc)
     const pdfFields = [
       { label: 'Resume', url: getResumeUrl(selectedApp) },
@@ -222,16 +279,44 @@ const Reviewer = () => {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800">
         <div className="container mx-auto px-4 py-8 max-w-7xl">
-          {/* Header with Back Button */}
+          {/* Header with Navigation */}
           <div className="mb-8">
-            <Button 
-              variant="ghost" 
-              onClick={handleBackToList}
-              className="mb-4 hover:bg-slate-200 dark:hover:bg-slate-700"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Applications
-            </Button>
+            <div className="flex items-center justify-between mb-4">
+              <Button 
+                variant="ghost" 
+                onClick={handleBackToList}
+                className="hover:bg-slate-200 dark:hover:bg-slate-700"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to List
+              </Button>
+              
+              {/* Application Navigation */}
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handlePreviousApplication}
+                  disabled={currentAppIndex === 0}
+                >
+                  <ArrowLeft className="w-4 h-4 mr-1" />
+                  Previous
+                </Button>
+                <span className="text-sm font-medium">
+                  {currentAppIndex + 1} of {filteredApplications.length}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleNextApplication}
+                  disabled={currentAppIndex === filteredApplications.length - 1}
+                >
+                  Next
+                  <ArrowRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
+            </div>
+            
             <div className="flex items-center gap-3">
               <div className="p-2 bg-primary/10 rounded-lg">
                 <Award className="w-6 h-6 text-primary" />
@@ -254,263 +339,32 @@ const Reviewer = () => {
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-              {/* Sidebar - Compact Applicant & Award Info */}
+              {/* Sidebar - Compact Info */}
               <div className="lg:col-span-1 space-y-4">
-                {/* Compact Student Info */}
-                <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <User className="w-4 h-4" />
-                      Applicant
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div>
-                      <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Name</p>
-                      <p className="text-sm font-semibold">{selectedApp.first_name} {selectedApp.last_name}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Email</p>
-                      <p className="text-sm">{selectedApp.email}</p>
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Status</p>
-                      <Badge className={`${getStatusColor(selectedApp.status)} text-xs font-medium w-fit`}>
-                        {getStatusIcon(selectedApp.status)}
-                        <span className="ml-1 capitalize">{selectedApp.status}</span>
-                      </Badge>
-                    </div>
-                    <div>
-                      <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Submitted</p>
-                      <p className="text-sm">{selectedApp.submitted_at ? new Date(selectedApp.submitted_at).toLocaleDateString() : '-'}</p>
-                    </div>
-                  </CardContent>
-                </Card>
+                {/* Applicant Info */}
+                <ApplicantInfoCard application={selectedApp} />
 
-                {/* Compact Award Info */}
-                {awardInfo && (
-                  <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-base flex items-center gap-2">
-                        <Award className="w-4 h-4" />
-                        Award
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                      <div>
-                        <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Title</p>
-                        <p className="text-sm font-semibold">{awardInfo.title}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Value</p>
-                        <p className="text-sm">${awardInfo.value?.toLocaleString()}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Deadline</p>
-                        <p className="text-sm">{awardInfo.deadline}</p>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
+                {/* Award Details with Eligibility */}
+                <AwardInfoCard award={awardInfo} />
 
-                {/* Review Panel - Compact */}
-                <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <Star className="w-4 h-4" />
-                      {selectedApp.status === 'reviewed' ? 'Review Details' : 'Review'}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">Shortlisted</p>
-                      {selectedApp.status === 'reviewed' && (
-                        <div className="mb-3 p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg border">
-                          <div className="flex items-center gap-2 mb-2">
-                            <CheckCircle2 className="w-4 h-4 text-green-600" />
-                            <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                              Review Decision: {shortlisted ? 'Shortlisted' : 'Not Shortlisted'}
-                            </p>
-                          </div>
-                          <p className="text-xs text-slate-500 dark:text-slate-400">
-                            This application has already been reviewed
-                          </p>
-                        </div>
-                      )}
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant={shortlisted === true ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setShortlisted(true)}
-                          disabled={selectedApp.status === 'reviewed'}
-                          className="flex-1"
-                        >
-                          <CheckCircle2 className="w-4 h-4 mr-2" />
-                          Shortlisted
-                        </Button>
-                        <Button
-                          variant={shortlisted === false ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setShortlisted(false)}
-                          disabled={selectedApp.status === 'reviewed'}
-                          className="flex-1"
-                        >
-                          <XCircle className="w-4 h-4 mr-2" />
-                          Not Shortlisted
-                        </Button>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <p className="text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">Comments</p>
-                      {selectedApp.status === 'reviewed' && comments && (
-                        <div className="mb-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                          <p className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-1">Review Notes:</p>
-                          <p className="text-sm text-blue-800 dark:text-blue-200 leading-relaxed">
-                            {comments}
-                          </p>
-                        </div>
-                      )}
-                      <Textarea
-                        value={comments}
-                        onChange={(e) => setComments(e.target.value)}
-                        placeholder="Add your review comments..."
-                        disabled={selectedApp.status === 'reviewed'}
-                        className="min-h-24 resize-none text-sm"
-                      />
-                    </div>
-                    
-                    <div className="flex flex-col gap-2">
-                      {selectedApp.status === 'reviewed' ? (
-                        <div className="text-center py-2">
-                          <p className="text-xs text-slate-500 dark:text-slate-400">
-                            Review already submitted
-                          </p>
-                        </div>
-                      ) : (
-                        <Button 
-                          onClick={handleSubmitReview}
-                          disabled={shortlisted === null || submittingReview}
-                          size="sm"
-                          className="w-full"
-                        >
-                          <CheckCircle2 className="w-4 h-4 mr-2" />
-                          {submittingReview ? 'Submitting...' : 'Submit Review'}
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
+                {/* Review Panel */}
+                <ReviewSubmissionForm
+                  application={selectedApp}
+                  onSubmit={handleSubmitReview}
+                  isSubmitting={submittingReview}
+                />
               </div>
 
               {/* Main Content Area */}
               <div className="lg:col-span-3 space-y-6">
+                {/* Application Responses */}
+                <ApplicationResponsesCard 
+                  application={selectedApp} 
+                  requiredFields={requiredFields} 
+                />
 
-                {/* Application Responses (Essay Questions) */}
-                <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <FileText className="w-4 h-4" />
-                      Application Responses
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    {requiredFields.length === 0 ? (
-                      <p className="text-slate-500 dark:text-slate-400 text-sm">No required fields found for this award.</p>
-                    ) : (
-                      <div className="space-y-4">
-                        {requiredFields
-                          .filter(field => field.field_name !== 'resume_url' && field.field_name !== 'resume' && field.field_name !== 'cv_url')
-                          .map((field, index) => {
-                            let response = '';
-                            // If essay, check essay_responses JSON
-                            if (field.field_config?.type === 'essay' && selectedApp.essay_responses) {
-                              try {
-                                const essays = typeof selectedApp.essay_responses === 'string' ? JSON.parse(selectedApp.essay_responses) : selectedApp.essay_responses;
-                                // Try multiple possible keys
-                                response = essays[field.field_name] || essays[field.id] || '';
-                                // Try keys that start with 'essay_response_'
-                                if (!response) {
-                                  const essayKey = Object.keys(essays).find(k => k.endsWith(field.id));
-                                  if (essayKey) response = essays[essayKey];
-                                }
-                                // Debug log
-                                if (!response) {
-                                  console.log('Essay debug:', { essays, fieldName: field.field_name, fieldId: field.id, keys: Object.keys(essays) });
-                                }
-                              } catch {
-                                response = '';
-                              }
-                            } else {
-                              response = selectedApp[field.field_name] || '';
-                            }
-                            const isFileField = field.type === 'file';
-                            return (
-                              <div key={field.id} className="border border-border/50 rounded-lg p-3">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <MessageSquare className="w-3 h-3 text-primary" />
-                                  <p className="font-medium text-sm text-slate-900 dark:text-slate-100">{field.label}</p>
-                                </div>
-                                {field.field_config?.question && (
-                                  <p className="text-xs text-slate-600 dark:text-slate-400 italic mb-2 pl-5">
-                                    "{field.field_config.question}"
-                                  </p>
-                                )}
-                                <div className="bg-slate-50/50 dark:bg-slate-800/50 p-3 rounded border-l-2 border-l-primary/20">
-                                  {isFileField
-                                    ? <span className="text-xs text-muted-foreground">See below for uploaded file.</span>
-                                    : <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
-                                        {response ? response : 'No response provided'}
-                                      </p>
-                                  }
-                                </div>
-                              </div>
-                            );
-                          })}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* All PDFs */}
-                {pdfFields.length > 0 && pdfFields.map((file, idx) => (
-                  <Card key={file.label} className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-                    <CardHeader>
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <FileText className="w-5 h-5" />
-                        {file.label}
-                        {/* Only show download button for non-PDFs */}
-                        {!file.url.endsWith('.pdf') && (
-                          <Button 
-                            size="sm" 
-                            variant="outline"
-                            onClick={() => window.open(file.url, '_blank')}
-                            className="ml-auto"
-                          >
-                            <Download className="w-4 h-4 mr-1" />
-                            Download
-                          </Button>
-                        )}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      {file.url.endsWith('.pdf') ? (
-                        <div className="h-[600px] md:h-[70vh] w-full bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden border">
-                          <iframe
-                            src={file.url}
-                            title={file.label + ' PDF'}
-                            className="w-full h-full border-0 min-h-[400px]"
-                            allow="autoplay"
-                          />
-                        </div>
-                      ) : (
-                        <div className="text-muted-foreground">
-                          <p>This file type cannot be previewed. Please use the download button above to view it.</p>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                ))}
+                {/* PDF Documents */}
+                <DocumentViewer documents={pdfFields} />
               </div>
             </div>
           )}
@@ -543,7 +397,7 @@ const Reviewer = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card className="border-0 shadow-sm bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -558,7 +412,19 @@ const Reviewer = () => {
             </CardContent>
           </Card>
           
-          
+          <Card className="border-0 shadow-sm bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Pending Review</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{stats.submitted}</p>
+                </div>
+                <div className="p-3 bg-yellow-100 dark:bg-yellow-900/30 rounded-full">
+                  <Clock className="w-5 h-5 text-yellow-600 dark:text-yellow-400" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
           
           <Card className="border-0 shadow-sm bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm">
             <CardContent className="p-6">
@@ -573,16 +439,16 @@ const Reviewer = () => {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card className="border-0 shadow-sm bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm">
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Submitted</p>
-                  <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{stats.submitted}</p>
+                  <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Shortlisted</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">{reviewSummary.shortlisted}</p>
                 </div>
-                <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-full">
-                  <User className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                <div className="p-3 bg-emerald-100 dark:bg-emerald-900/30 rounded-full">
+                  <Star className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                 </div>
               </div>
             </CardContent>
@@ -613,7 +479,7 @@ const Reviewer = () => {
             </div>
           </CardHeader>
           
-                    <CardContent>
+          <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-6">
                 <TabsTrigger value="submitted" className="flex items-center gap-2">
@@ -645,6 +511,7 @@ const Reviewer = () => {
                       <TableHeader>
                         <TableRow className="bg-slate-50 dark:bg-slate-800/50">
                           <TableHead className="font-semibold">Student</TableHead>
+                          <TableHead className="font-semibold">Award</TableHead>
                           <TableHead className="font-semibold">Status</TableHead>
                           <TableHead className="font-semibold">Submitted</TableHead>
                           <TableHead className="font-semibold">Actions</TableHead>
@@ -657,7 +524,7 @@ const Reviewer = () => {
                             className={`transition-all duration-200 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer ${
                               index % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50/50 dark:bg-slate-800/30'
                             }`}
-                            onClick={() => handleViewApplication(app)}
+                            onClick={() => handleViewApplication(app, index)}
                           >
                             <TableCell>
                               <div className="flex items-center gap-3">
@@ -672,6 +539,12 @@ const Reviewer = () => {
                                     {app.email}
                                   </p>
                                 </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-sm">
+                                <p className="font-medium">{app.award?.title || 'N/A'}</p>
+                                <p className="text-slate-500">{app.award?.code || ''}</p>
                               </div>
                             </TableCell>
                             <TableCell>
@@ -695,7 +568,7 @@ const Reviewer = () => {
                                   variant="outline" 
                                   onClick={(e) => {
                                     e.stopPropagation()
-                                    handleViewApplication(app)
+                                    handleViewApplication(app, index)
                                   }}
                                   className="hover:bg-primary hover:text-primary-foreground transition-colors"
                                 >
@@ -732,6 +605,7 @@ const Reviewer = () => {
                       <TableHeader>
                         <TableRow className="bg-slate-50 dark:bg-slate-800/50">
                           <TableHead className="font-semibold">Student</TableHead>
+                          <TableHead className="font-semibold">Award</TableHead>
                           <TableHead className="font-semibold">Status</TableHead>
                           <TableHead className="font-semibold">Reviewed</TableHead>
                           <TableHead className="font-semibold">Actions</TableHead>
@@ -752,7 +626,7 @@ const Reviewer = () => {
                             className={`transition-all duration-200 hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer ${
                               index % 2 === 0 ? 'bg-white dark:bg-slate-900' : 'bg-slate-50/50 dark:bg-slate-800/30'
                             }`}
-                            onClick={() => handleViewApplication(app)}
+                            onClick={() => handleViewApplication(app, index)}
                           >
                             <TableCell>
                               <div className="flex items-center gap-3">
@@ -767,6 +641,12 @@ const Reviewer = () => {
                                     {app.email}
                                   </p>
                                 </div>
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div className="text-sm">
+                                <p className="font-medium">{app.award?.title || 'N/A'}</p>
+                                <p className="text-slate-500">{app.award?.code || ''}</p>
                               </div>
                             </TableCell>
                             <TableCell>
@@ -810,6 +690,9 @@ const Reviewer = () => {
             </Tabs>
           </CardContent>
         </Card>
+
+        {/* Review Summary Section */}
+        <ReviewSummaryCard summary={reviewSummary} />
       </div>
     </div>
   )

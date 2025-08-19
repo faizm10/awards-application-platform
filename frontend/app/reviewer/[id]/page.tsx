@@ -16,11 +16,17 @@ import {
   AlertCircle,
   ArrowLeft,
   MessageSquare,
-  Star
+  Star,
+  Target,
+  Download
 } from 'lucide-react'
 import { toast } from 'sonner';
 import { LogoutButton } from "@/components/logout-button";
 import { useParams, useRouter } from 'next/navigation';
+import ApplicantInfoCard from '@/components/reviewer/ApplicantInfoCard';
+import AwardInfoCard from '@/components/reviewer/AwardInfoCard';
+import ApplicationResponsesCard from '@/components/reviewer/ApplicationResponsesCard';
+import DocumentViewer from '@/components/reviewer/DocumentViewer';
 
 const ReviewerApplication = () => {
   const params = useParams()
@@ -43,10 +49,24 @@ const ReviewerApplication = () => {
       setUser(userData.user)
       
       if (userData.user) {
-        // Fetch the specific application
+        // Fetch the specific application with award info
         const { data: app, error: appError } = await supabase
           .from('applications')
-          .select('*')
+          .select(`
+            *,
+            award:awards (
+              id,
+              title,
+              code,
+              value,
+              deadline,
+              category,
+              citizenship,
+              eligibility,
+              description,
+              donor
+            )
+          `)
           .eq('id', applicationId)
           .single()
         
@@ -57,14 +77,7 @@ const ReviewerApplication = () => {
         }
         
         setApplication(app)
-        
-        // Fetch award information
-        const { data: award } = await supabase
-          .from('awards')
-          .select('*')
-          .eq('id', app.award_id)
-          .single()
-        setAwardInfo(award)
+        setAwardInfo(app.award)
         
         // Fetch required fields
         const { data: fields } = await supabase
@@ -197,62 +210,11 @@ const ReviewerApplication = () => {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Sidebar - Compact Applicant & Award Info */}
           <div className="lg:col-span-1 space-y-4">
-            {/* Compact Student Info */}
-            <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <User className="w-4 h-4" />
-                  Applicant
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div>
-                  <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Name</p>
-                  <p className="text-sm font-semibold">{application.first_name} {application.last_name}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Email</p>
-                  <p className="text-sm">{application.email}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Status</p>
-                  <Badge className={`${getStatusColor(application.status)} text-xs font-medium w-fit`}>
-                    {getStatusIcon(application.status)}
-                    <span className="ml-1 capitalize">{application.status}</span>
-                  </Badge>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Submitted</p>
-                  <p className="text-sm">{application.submitted_at ? new Date(application.submitted_at).toLocaleDateString() : '-'}</p>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Applicant Info */}
+            <ApplicantInfoCard application={application} />
 
-            {/* Compact Award Info */}
-            {awardInfo && (
-              <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Award className="w-4 h-4" />
-                    Award
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div>
-                    <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Title</p>
-                    <p className="text-sm font-semibold">{awardInfo.title}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Value</p>
-                    <p className="text-sm">${awardInfo.value?.toLocaleString()}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-medium text-slate-600 dark:text-slate-400">Deadline</p>
-                    <p className="text-sm">{awardInfo.deadline}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+            {/* Award Details with Eligibility */}
+            <AwardInfoCard award={awardInfo} />
 
             {/* Review Panel - Compact */}
             {application.status === 'reviewed' && review && (
@@ -297,95 +259,14 @@ const ReviewerApplication = () => {
 
           {/* Main Content Area */}
           <div className="lg:col-span-3 space-y-6">
-            {/* Application Responses (Essay Questions) */}
-            <Card className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <FileText className="w-4 h-4" />
-                  Application Responses
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                {requiredFields.length === 0 ? (
-                  <p className="text-slate-500 dark:text-slate-400 text-sm">No required fields found for this award.</p>
-                ) : (
-                  <div className="space-y-4">
-                    {requiredFields
-                      .filter(field => field.field_name !== 'resume_url' && field.field_name !== 'resume' && field.field_name !== 'cv_url')
-                      .map((field, index) => {
-                        let response = '';
-                        // If essay, check essay_responses JSON
-                        if (field.field_config?.type === 'essay' && application.essay_responses) {
-                          try {
-                            const essays = typeof application.essay_responses === 'string' ? JSON.parse(application.essay_responses) : application.essay_responses;
-                            // Try multiple possible keys
-                            response = essays[field.field_name] || essays[field.id] || '';
-                            // Try keys that start with 'essay_response_'
-                            if (!response) {
-                              const essayKey = Object.keys(essays).find(k => k.endsWith(field.id));
-                              if (essayKey) response = essays[essayKey];
-                            }
-                          } catch {
-                            response = '';
-                          }
-                        } else {
-                          response = application[field.field_name] || '';
-                        }
-                        const isFileField = field.type === 'file';
-                        return (
-                          <div key={field.id} className="border border-border/50 rounded-lg p-3">
-                            <div className="flex items-center gap-2 mb-2">
-                              <MessageSquare className="w-3 h-3 text-primary" />
-                              <p className="font-medium text-sm text-slate-900 dark:text-slate-100">{field.label}</p>
-                            </div>
-                            {field.field_config?.question && (
-                              <p className="text-xs text-slate-600 dark:text-slate-400 italic mb-2 pl-5">
-                                "{field.field_config.question}"
-                              </p>
-                            )}
-                            <div className="bg-slate-50/50 dark:bg-slate-800/50 p-3 rounded border-l-2 border-l-primary/20">
-                              {isFileField
-                                ? <span className="text-xs text-muted-foreground">See below for uploaded file.</span>
-                                : <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
-                                    {response ? response : 'No response provided'}
-                                  </p>
-                              }
-                            </div>
-                          </div>
-                        );
-                      })}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            {/* Application Responses */}
+            <ApplicationResponsesCard 
+              application={application} 
+              requiredFields={requiredFields} 
+            />
 
-            {/* All PDFs */}
-            {pdfFields.length > 0 && pdfFields.map((file, idx) => (
-              <Card key={file.label} className="border-0 shadow-lg bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm">
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <FileText className="w-5 h-5" />
-                    {file.label}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  {file.url.endsWith('.pdf') ? (
-                    <div className="h-[600px] md:h-[70vh] w-full bg-slate-100 dark:bg-slate-800 rounded-lg overflow-hidden border">
-                      <iframe
-                        src={file.url}
-                        title={file.label + ' PDF'}
-                        className="w-full h-full border-0 min-h-[400px]"
-                        allow="autoplay"
-                      />
-                    </div>
-                  ) : (
-                    <div className="text-muted-foreground">
-                      <p>This file type cannot be previewed. Please use the download button above to view it.</p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            ))}
+            {/* PDF Documents */}
+            <DocumentViewer documents={pdfFields} />
           </div>
         </div>
       </div>
