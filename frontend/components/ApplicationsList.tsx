@@ -1,12 +1,46 @@
 "use client";
 import { useState } from "react";
-import { Award, Clock, CheckCircle, Edit } from "lucide-react";
+import { Award, Clock, CheckCircle, Edit, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 
 export default function ApplicationsList({ applications }: { applications: any[] }) {
   const [showAll, setShowAll] = useState(false);
   const visibleApps = showAll ? applications : applications.slice(0, 3);
+
+  const handleDownloadPDF = async (app: any, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    try {
+      const response = await fetch("/api/applications/generate-pdf", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          applicationId: app.id,
+        }),
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `application-${app.award?.code}-${app.first_name}-${app.last_name}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        throw new Error("Failed to generate PDF");
+      }
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      alert("Failed to generate PDF. Please try again.");
+    }
+  };
   return (
     <>
       <div className="space-y-4">
@@ -51,7 +85,7 @@ export default function ApplicationsList({ applications }: { applications: any[]
                       }
                     </span>
                   </div>
-                  <div className="flex justify-end">
+                  <div className="flex items-center gap-2">
                     <span className={`text-xs px-2 py-1 rounded-full font-medium ${
                       app.status === "submitted" || app.status === "reviewed"
                         ? "bg-green-100 text-green-700 border border-green-200" 
@@ -61,6 +95,16 @@ export default function ApplicationsList({ applications }: { applications: any[]
                     }`}>
                       {app.status === "submitted" || app.status === "reviewed" ? "Submitted" : app.status === "draft" ? "Draft" : app.status || "Unknown"}
                     </span>
+                    {(app.status === "submitted" || app.status === "reviewed") && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={(e) => handleDownloadPDF(app, e)}
+                        className="h-6 w-6 p-0 hover:bg-primary/10"
+                      >
+                        <Download className="h-3 w-3" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               </div>

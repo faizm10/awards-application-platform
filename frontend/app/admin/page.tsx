@@ -49,6 +49,7 @@ import ApplicationsTab from "@/components/admin/ApplicationsTab";
 import AwardsTab from "@/components/admin/AwardsTab";
 import ReviewerActivityTab from "@/components/admin/ReviewerActivityTab";
 import { useRouter } from "next/navigation";
+import { Download } from "lucide-react";
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState("overview");
@@ -270,6 +271,38 @@ const AdminDashboard = () => {
       }
     } catch (error) {
       console.error("Error fetching categories:", error);
+    }
+  };
+
+  const generateApplicationPDF = async (application: any) => {
+    try {
+      const response = await fetch("/api/applications/generate-pdf", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          applicationId: application.id,
+        }),
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `application-${application.award?.code}-${application.student?.full_name}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        toast.success("PDF generated successfully!");
+      } else {
+        throw new Error("Failed to generate PDF");
+      }
+    } catch (error) {
+      console.error("Error generating PDF:", error);
+      toast.error("Failed to generate PDF");
     }
   };
 
@@ -1151,6 +1184,7 @@ const AdminDashboard = () => {
               });
               setShowApplicationModal(true);
             }}
+            onDownloadPDF={generateApplicationPDF}
             applicationCounts={applicationCounts}
           />
         )}
@@ -1162,8 +1196,8 @@ const AdminDashboard = () => {
             onEditAward={(award) => {
               setEditAward(award);
               setEditAwardForm({ ...award });
-              setShowEditAwardModal(true);
-            }}
+                              setShowEditAwardModal(true);
+                            }}
           />
         )}
 
@@ -1370,26 +1404,37 @@ const AdminDashboard = () => {
       {showApplicationModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-background rounded-lg shadow-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-border">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-bold">
-                  {isEditingApplication ? "Editing" : "Viewing"} Application
-                </h2>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setShowApplicationModal(false)}
-                >
-                  <X className="w-4 h-4" />
-                </Button>
-              </div>
-              {selectedApplication && (
-                <div className="mt-2 text-sm text-muted-foreground">
-                  {selectedApplication.award?.title} •{" "}
-                  {selectedApplication.student?.full_name}
+                          <div className="p-6 border-b border-border">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-xl font-bold">
+                    {isEditingApplication ? "Editing" : "Viewing"} Application
+                  </h2>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => generateApplicationPDF(selectedApplication)}
+                      className="flex items-center gap-2"
+                    >
+                      <Download className="w-4 h-4" />
+                      Download PDF
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowApplicationModal(false)}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
-              )}
-            </div>
+                {selectedApplication && (
+                  <div className="mt-2 text-sm text-muted-foreground">
+                    {selectedApplication.award?.title} •{" "}
+                    {selectedApplication.student?.full_name}
+                  </div>
+                )}
+              </div>
 
             <div className="p-6 space-y-6">
               {selectedApplication && (
