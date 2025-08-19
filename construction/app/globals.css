@@ -1,0 +1,125 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Updated to University of Guelph brand colors */
+  --background: #ffffff; /* Wellington White */
+  --foreground: #000000; /* Cannon Black */
+  --card: #ffffff; /* Wellington White */
+  --card-foreground: #000000; /* Cannon Black */
+  --popover: #ffffff; /* Wellington White */
+  --popover-foreground: #000000; /* Cannon Black */
+  --primary: #e51937; /* Reynolds Red */
+  --primary-foreground: #ffffff; /* White text on Reynolds Red */
+  --secondary: #ffc429; /* Gryphon Gold */
+  --secondary-foreground: #000000; /* Cannon Black on Gryphon Gold */
+  --muted: #d8d8d8; /* Lennox Light Gray */
+  --muted-foreground: #747676; /* Gordon Dark Gray */
+  --accent: #ffc429; /* Gryphon Gold */
+  --accent-foreground: #000000; /* Cannon Black on accent */
+  --destructive: #e51937; /* Reynolds Red for destructive actions */
+  --destructive-foreground: #ffffff; /* White text on destructive */
+  --border: #d8d8d8; /* Lennox Light Gray for borders */
+  --input: #ffffff; /* Wellington White for inputs */
+  --ring: rgba(229, 25, 55, 0.5); /* Semi-transparent Reynolds Red for focus */
+  --chart-1: #e51937; /* Reynolds Red */
+  --chart-2: #ffc429; /* Gryphon Gold */
+  --chart-3: #187bb4; /* Lang Blue */
+  --chart-4: #318738; /* Johnston Green */
+  --chart-5: #747676; /* Gordon Dark Gray */
+  --radius: 0.5rem;
+  --sidebar: #ffffff; /* Wellington White */
+  --sidebar-foreground: #000000; /* Cannon Black */
+  --sidebar-primary: #e51937; /* Reynolds Red */
+  --sidebar-primary-foreground: #ffffff; /* White on Reynolds Red */
+  --sidebar-accent: #ffc429; /* Gryphon Gold */
+  --sidebar-accent-foreground: #000000; /* Cannon Black on Gryphon Gold */
+  --sidebar-border: #d8d8d8; /* Lennox Light Gray */
+  --sidebar-ring: rgba(229, 25, 55, 0.5); /* Semi-transparent Reynolds Red */
+}
+
+.dark {
+  /* Keeping light theme focus but providing dark mode fallbacks */
+  --background: #000000; /* Cannon Black */
+  --foreground: #ffffff; /* Wellington White */
+  --card: #1a1a1a; /* Dark card background */
+  --card-foreground: #ffffff; /* Wellington White */
+  --popover: #1a1a1a; /* Dark popover */
+  --popover-foreground: #ffffff; /* Wellington White */
+  --primary: #e51937; /* Reynolds Red stays consistent */
+  --primary-foreground: #ffffff; /* White text */
+  --secondary: #ffc429; /* Gryphon Gold stays consistent */
+  --secondary-foreground: #000000; /* Cannon Black */
+  --muted: #2a2a2a; /* Dark muted */
+  --muted-foreground: #d8d8d8; /* Lennox Light Gray */
+  --accent: #ffc429; /* Gryphon Gold */
+  --accent-foreground: #000000; /* Cannon Black */
+  --destructive: #e51937; /* Reynolds Red */
+  --destructive-foreground: #ffffff; /* White text */
+  --border: #2a2a2a; /* Dark border */
+  --input: #1a1a1a; /* Dark input */
+  --ring: rgba(229, 25, 55, 0.5); /* Semi-transparent Reynolds Red */
+  --chart-1: #e51937; /* Reynolds Red */
+  --chart-2: #ffc429; /* Gryphon Gold */
+  --chart-3: #187bb4; /* Lang Blue */
+  --chart-4: #318738; /* Johnston Green */
+  --chart-5: #d8d8d8; /* Lennox Light Gray */
+  --sidebar: #1a1a1a; /* Dark sidebar */
+  --sidebar-foreground: #ffffff; /* Wellington White */
+  --sidebar-primary: #e51937; /* Reynolds Red */
+  --sidebar-primary-foreground: #ffffff; /* White text */
+  --sidebar-accent: #ffc429; /* Gryphon Gold */
+  --sidebar-accent-foreground: #000000; /* Cannon Black */
+  --sidebar-border: #2a2a2a; /* Dark border */
+  --sidebar-ring: rgba(229, 25, 55, 0.5); /* Semi-transparent Reynolds Red */
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
