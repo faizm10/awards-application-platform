@@ -5,6 +5,8 @@ import { GeistMono } from "geist/font/mono";
 import "./globals.css";
 import { Navigation } from "@/components/navigation";
 import Footer from "@/components/footer";
+import { AuthProvider } from "@/contexts/AuthContext";
+
 export const metadata: Metadata = {
   title: "Student Awards Portal - University of Guelph",
   description:
@@ -29,9 +31,10 @@ html {
         `}</style>
       </head>
       <body>
-        <Navigation />
-        <main className="min-h-screen bg-background">{children}</main>
-        
+        <AuthProvider>
+          <Navigation />
+          <main className="min-h-screen bg-background">{children}</main>
+        </AuthProvider>
       </body>
     </html>
   );

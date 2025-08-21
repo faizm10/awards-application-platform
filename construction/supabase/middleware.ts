@@ -1,6 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
-const PUBLIC_PATHS = ["/", "/auth/login", "/auth/sign-up", "/awards"];
+
+const PUBLIC_PATHS = ["/", "/auth/login", "/auth/sign-up", "/auth/sign-up-success", "/awards"];
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
@@ -53,6 +55,7 @@ export async function updateSession(request: NextRequest) {
     if (!user && !isPublicPath) {
       const url = request.nextUrl.clone();
       url.pathname = "/auth/login";
+      url.searchParams.set("redirect", request.nextUrl.pathname);
       return NextResponse.redirect(url);
     }
   }

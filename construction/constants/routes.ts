@@ -20,10 +20,11 @@ export const ROUTES = {
   // Reviewer routes
   REVIEWER_DASHBOARD: '/reviewer-dashboard',
   
-  // Auth routes (if needed in the future)
-  LOGIN: '/login',
-  SIGNUP: '/signup',
-  FORGOT_PASSWORD: '/forgot-password',
+  // Auth routes
+  LOGIN: '/auth/login',
+  SIGNUP: '/auth/sign-up',
+  SIGNUP_SUCCESS: '/auth/sign-up-success',
+  FORGOT_PASSWORD: '/auth/forgot-password',
 } as const;
 
 // Navigation menu items

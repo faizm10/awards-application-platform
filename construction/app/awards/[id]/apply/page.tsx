@@ -28,7 +28,8 @@ import { ArrowLeft, Save, Send, AlertCircle, CheckCircle, FileText, Upload } fro
 import Link from "next/link";
 import { useAward } from "@/hooks/use-award";
 import { useAwardRequirements } from "@/hooks/use-award-requirements";
-import { getCurrentUser } from "@/lib/auth";
+import { useAuth } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/auth/protected-route";
 import {
   getApplicationByAwardAndStudent,
   createApplication,
@@ -42,10 +43,10 @@ interface ApplyPageProps {
   params: Promise<{ id: string }>;
 }
 
-export default function ApplyPage({ params }: ApplyPageProps) {
+function ApplyPageContent({ params }: ApplyPageProps) {
   const router = useRouter();
   const [id, setId] = useState<string | null>(null);
-  const user = getCurrentUser();
+  const { user } = useAuth();
 
   const [existingApplication, setExistingApplication] =
     useState<Application | null>(null);
@@ -78,7 +79,7 @@ export default function ApplyPage({ params }: ApplyPageProps) {
 
   // Initialize form data when award and requirements are loaded
   useEffect(() => {
-    if (id && user && user.role === "student") {
+    if (id && user) {
       const existingApp = getApplicationByAwardAndStudent(id, user.id);
       setExistingApplication(existingApp || null);
       if (existingApp) {
@@ -91,15 +92,13 @@ export default function ApplyPage({ params }: ApplyPageProps) {
           // Calculate word counts for essays
           const counts: Record<string, number> = {};
           Object.keys(existingApp.essayResponses).forEach((key) => {
-            counts[key] = countWords(existingApp.essayResponses[key] || "");
+            counts[key] = countWords(existingApp.essayResponses![key] || "");
           });
           setWordCounts(counts);
         }
       }
-    } else if (user && user.role !== "student") {
-      router.push("/login");
     }
-  }, [id, user, router]);
+  }, [id, user]);
 
   const countWords = (text: string): number => {
     return text
@@ -142,10 +141,6 @@ export default function ApplyPage({ params }: ApplyPageProps) {
         </Card>
       </div>
     );
-  }
-
-  if (!user || user.role !== "student") {
-    return null;
   }
 
   const handleInputChange = (fieldName: string, value: string) => {
@@ -223,13 +218,13 @@ export default function ApplyPage({ params }: ApplyPageProps) {
         formData,
         documents,
         essayResponses,
-        status: "draft",
+        status: "draft" as const,
       };
 
       if (existingApplication) {
         updateApplication(existingApplication.id, applicationData);
       } else {
-        const newApp = createApplication(id!, user.id, formData, documents);
+        const newApp = createApplication(id!, user!.id, formData, documents);
         updateApplication(newApp.id, { essayResponses });
       }
 
@@ -282,14 +277,14 @@ export default function ApplyPage({ params }: ApplyPageProps) {
         formData,
         documents,
         essayResponses,
-        status: "submitted",
+        status: "submitted" as const,
         submittedAt: new Date().toISOString(),
       };
 
       if (existingApplication) {
         updateApplication(existingApplication.id, applicationData);
       } else {
-        const newApp = createApplication(id!, user.id, formData, documents);
+        const newApp = createApplication(id!, user!.id, formData, documents);
         updateApplication(newApp.id, { 
           essayResponses, 
           status: "submitted",
@@ -655,5 +650,13 @@ export default function ApplyPage({ params }: ApplyPageProps) {
         </DialogContent>
       </Dialog>
     </div>
+  );
+}
+
+export default function ApplyPage(props: ApplyPageProps) {
+  return (
+    <ProtectedRoute>
+      <ApplyPageContent {...props} />
+    </ProtectedRoute>
   );
 }
