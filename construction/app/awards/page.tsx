@@ -6,66 +6,41 @@ import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Search, Filter, AwardIcon, SortAsc, SortDesc } from "lucide-react"
+import { Search, Filter, AwardIcon, SortAsc, SortDesc, Loader2 } from "lucide-react"
 import { AwardCard } from "@/components/award-card"
-import { getAwards, getFaculties } from "@/lib/awards"
-
-type SortOption = "deadline" | "value" | "title" | "applications"
-type SortDirection = "asc" | "desc"
+import { useAwards, type AwardFilters, type AwardSort } from "@/hooks/use-awards"
 
 export default function AwardsPage() {
   const [searchTerm, setSearchTerm] = useState("")
-  const [selectedFaculty, setSelectedFaculty] = useState("all")
-  const [selectedType, setSelectedType] = useState("all")
+  const [selectedCategory, setSelectedCategory] = useState("all")
   const [selectedStatus, setSelectedStatus] = useState("all")
-  const [sortBy, setSortBy] = useState<SortOption>("deadline")
-  const [sortDirection, setSortDirection] = useState<SortDirection>("asc")
+  const [sortBy, setSortBy] = useState<"deadline" | "value" | "title" | "created_at">("deadline")
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
 
-  const faculties = getFaculties()
+  // Prepare filters for the hook
+  const filters: AwardFilters = useMemo(() => ({
+    search: searchTerm || undefined,
+    category: selectedCategory !== "all" ? selectedCategory : undefined,
+  }), [searchTerm, selectedCategory])
 
-  const filteredAndSortedAwards = useMemo(() => {
-    const filtered = getAwards({
-      search: searchTerm,
-      faculty: selectedFaculty,
-      awardType: selectedType,
-      status: selectedStatus,
-    })
+  // Prepare sort for the hook
+  const sort: AwardSort = useMemo(() => ({
+    field: sortBy,
+    direction: sortDirection,
+  }), [sortBy, sortDirection])
 
-    return filtered.sort((a, b) => {
-      let comparison = 0
-
-      switch (sortBy) {
-        case "deadline":
-          comparison = new Date(a.deadline).getTime() - new Date(b.deadline).getTime()
-          break
-        case "value":
-          const aValue = Number.parseInt(a.value.replace(/[$,]/g, ""))
-          const bValue = Number.parseInt(b.value.replace(/[$,]/g, ""))
-          comparison = aValue - bValue
-          break
-        case "title":
-          comparison = a.title.localeCompare(b.title)
-          break
-        case "applications":
-          comparison = a.applicationCount - b.applicationCount
-          break
-      }
-
-      return sortDirection === "desc" ? -comparison : comparison
-    })
-  }, [searchTerm, selectedFaculty, selectedType, selectedStatus, sortBy, sortDirection])
+  // Use the hook to fetch awards
+  const { awards, loading, error, categories } = useAwards(filters, sort)
 
   const clearFilters = () => {
     setSearchTerm("")
-    setSelectedFaculty("all")
-    setSelectedType("all")
+    setSelectedCategory("all")
     setSelectedStatus("all")
   }
 
   const activeFiltersCount = [
     searchTerm,
-    selectedFaculty !== "all" ? selectedFaculty : null,
-    selectedType !== "all" ? selectedType : null,
+    selectedCategory !== "all" ? selectedCategory : null,
     selectedStatus !== "all" ? selectedStatus : null,
   ].filter(Boolean).length
 
@@ -105,30 +80,19 @@ export default function AwardsPage() {
 
           {/* Filter Controls */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Select value={selectedFaculty} onValueChange={setSelectedFaculty}>
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
               <SelectTrigger>
-                <SelectValue placeholder="All Faculties" />
+                <SelectValue placeholder="All Categories" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Faculties</SelectItem>
-                {faculties.map((faculty) => (
-                  <SelectItem key={faculty} value={faculty}>
-                    {faculty}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <Select value={selectedType} onValueChange={setSelectedType}>
-              <SelectTrigger>
-                <SelectValue placeholder="Award Type" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="scholarship">Scholarship</SelectItem>
-                <SelectItem value="grant">Grant</SelectItem>
-                <SelectItem value="bursary">Bursary</SelectItem>
-                <SelectItem value="prize">Prize</SelectItem>
+                <SelectItem value="all">All Categories</SelectItem>
+                {categories
+                  .filter(category => category && category.trim() !== '')
+                  .map((category) => (
+                    <SelectItem key={category} value={category}>
+                      {category}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
 
@@ -145,7 +109,7 @@ export default function AwardsPage() {
             </Select>
 
             <div className="flex gap-2">
-              <Select value={sortBy} onValueChange={(value) => setSortBy(value as SortOption)}>
+              <Select value={sortBy} onValueChange={(value) => setSortBy(value as "deadline" | "value" | "title" | "created_at")}>
                 <SelectTrigger className="flex-1">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
@@ -153,7 +117,7 @@ export default function AwardsPage() {
                   <SelectItem value="deadline">Deadline</SelectItem>
                   <SelectItem value="value">Value</SelectItem>
                   <SelectItem value="title">Title</SelectItem>
-                  <SelectItem value="applications">Applications</SelectItem>
+                  <SelectItem value="created_at">Date Created</SelectItem>
                 </SelectContent>
               </Select>
               <Button
@@ -181,22 +145,48 @@ export default function AwardsPage() {
         </CardContent>
       </Card>
 
+      {/* Loading State */}
+      {loading && (
+        <div className="flex items-center justify-center py-12">
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-6 w-6 animate-spin" />
+            <span>Loading awards...</span>
+          </div>
+        </div>
+      )}
+
+      {/* Error State */}
+      {error && (
+        <Card className="text-center py-12">
+          <CardContent>
+            <AwardIcon className="h-12 w-12 text-destructive mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Error loading awards</h3>
+            <p className="text-muted-foreground mb-4">{error}</p>
+            <Button variant="outline" onClick={() => window.location.reload()}>
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Results Summary */}
-      <div className="mb-6">
-        <p className="text-muted-foreground">
-          Showing {filteredAndSortedAwards.length} award{filteredAndSortedAwards.length !== 1 ? "s" : ""}
-          {activeFiltersCount > 0 && " matching your criteria"}
-        </p>
-      </div>
+      {!loading && !error && (
+        <div className="mb-6">
+          <p className="text-muted-foreground">
+            Showing {awards.length} award{awards.length !== 1 ? "s" : ""}
+            {activeFiltersCount > 0 && " matching your criteria"}
+          </p>
+        </div>
+      )}
 
       {/* Awards Grid */}
-      {filteredAndSortedAwards.length > 0 ? (
+      {!loading && !error && awards.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredAndSortedAwards.map((award) => (
+          {awards.map((award) => (
             <AwardCard key={award.id} award={award} />
           ))}
         </div>
-      ) : (
+      ) : !loading && !error && awards.length === 0 ? (
         <Card className="text-center py-12">
           <CardContent>
             <AwardIcon className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
@@ -209,7 +199,7 @@ export default function AwardsPage() {
             </Button>
           </CardContent>
         </Card>
-      )}
+      ) : null}
     </div>
   )
 }

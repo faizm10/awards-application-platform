@@ -1,57 +1,67 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
-import { Progress } from "@/components/ui/progress"
-import { Calendar, Users, DollarSign, AlertCircle } from "lucide-react"
-import Link from "next/link"
-import type { Award } from "@/lib/awards"
-import { getCurrentUser } from "@/lib/auth"
-import { ROUTES } from "@/constants/routes"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Progress } from "@/components/ui/progress";
+import { Calendar, Users, DollarSign, AlertCircle } from "lucide-react";
+import Link from "next/link";
+import type { Award } from "@/hooks/use-awards";
+import { getCurrentUser } from "@/lib/auth";
+import { ROUTES } from "@/constants/routes";
 
 interface AwardCardProps {
-  award: Award
+  award: Award;
 }
 
 export function AwardCard({ award }: AwardCardProps) {
-  const user = getCurrentUser()
-  const isStudent = user?.role === "student"
+  const user = getCurrentUser();
+  const isStudent = user?.role === "student";
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "open":
-        return "bg-green-100 text-green-800 border-green-200"
+        return "bg-green-100 text-green-800 border-green-200";
       case "closed":
-        return "bg-red-100 text-red-800 border-red-200"
+        return "bg-red-100 text-red-800 border-red-200";
       case "upcoming":
-        return "bg-blue-100 text-blue-800 border-blue-200"
+        return "bg-blue-100 text-blue-800 border-blue-200";
       default:
-        return "bg-gray-100 text-gray-800 border-gray-200"
+        return "bg-gray-100 text-gray-800 border-gray-200";
     }
-  }
+  };
 
   const getTypeColor = (type: string) => {
     switch (type) {
       case "scholarship":
-        return "bg-primary/10 text-primary border-primary/20"
+        return "bg-primary/10 text-primary border-primary/20";
       case "grant":
-        return "bg-secondary/10 text-secondary-foreground border-secondary/20"
+        return "bg-secondary/10 text-secondary-foreground border-secondary/20";
       case "bursary":
-        return "bg-blue-100 text-blue-800 border-blue-200"
+        return "bg-blue-100 text-blue-800 border-blue-200";
       case "prize":
-        return "bg-purple-100 text-purple-800 border-purple-200"
+        return "bg-purple-100 text-purple-800 border-purple-200";
       default:
-        return "bg-gray-100 text-gray-800 border-gray-200"
+        return "bg-gray-100 text-gray-800 border-gray-200";
     }
-  }
+  };
 
-  const applicationProgress = award.maxApplications ? (award.applicationCount / award.maxApplications) * 100 : 0
+  const applicationProgress = award.application_count
+    ? (award.application_count / 100) * 100
+    : 0;
 
   const isDeadlineSoon = () => {
-    const deadline = new Date(award.deadline)
-    const now = new Date()
-    const daysUntilDeadline = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-    return daysUntilDeadline <= 7 && daysUntilDeadline > 0
-  }
+    const deadline = new Date(award.deadline);
+    const now = new Date();
+    const daysUntilDeadline = Math.ceil(
+      (deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)
+    );
+    return daysUntilDeadline <= 7 && daysUntilDeadline > 0;
+  };
 
   return (
     <Card className="hover:shadow-lg transition-shadow h-full flex flex-col">
@@ -59,15 +69,14 @@ export function AwardCard({ award }: AwardCardProps) {
         <div className="flex items-start justify-between gap-2">
           <CardTitle className="text-lg leading-tight">{award.title}</CardTitle>
           <div className="flex flex-col gap-2 flex-shrink-0">
-            <Badge variant="outline" className={getStatusColor(award.status)}>
-              {award.status}
-            </Badge>
-            <Badge variant="outline" className={getTypeColor(award.awardType)}>
-              {award.awardType}
+            <Badge variant="outline" className={getTypeColor(award.category)}>
+              {award.category}
             </Badge>
           </div>
         </div>
-        <CardDescription className="text-sm">{award.description}</CardDescription>
+        <CardDescription className="text-sm">
+          {award.description}
+        </CardDescription>
       </CardHeader>
 
       <CardContent className="flex-grow flex flex-col justify-between">
@@ -90,41 +99,13 @@ export function AwardCard({ award }: AwardCardProps) {
               <Calendar className="h-4 w-4 mr-2" />
               Deadline: {new Date(award.deadline).toLocaleDateString()}
             </div>
-
-            <div className="flex items-center text-sm text-muted-foreground">
-              <Users className="h-4 w-4 mr-2" />
-              {award.applicationCount} applicants
-              {award.maxApplications && ` / ${award.maxApplications} max`}
-            </div>
-          </div>
-
-          {award.maxApplications && (
-            <div className="space-y-1">
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Application Progress</span>
-                <span>{Math.round(applicationProgress)}%</span>
-              </div>
-              <Progress value={applicationProgress} className="h-2" />
-            </div>
-          )}
-
-          <div className="text-sm text-muted-foreground">
-            <strong>Faculty:</strong> {award.faculty}
           </div>
 
           <div className="space-y-1">
-            <div className="text-sm font-medium">Key Requirements:</div>
-            <ul className="text-xs text-muted-foreground space-y-1">
-              {award.eligibility.slice(0, 2).map((req, index) => (
-                <li key={index} className="flex items-start">
-                  <span className="mr-1">•</span>
-                  <span>{req}</span>
-                </li>
-              ))}
-              {award.eligibility.length > 2 && (
-                <li className="text-muted-foreground">+{award.eligibility.length - 2} more requirements</li>
-              )}
-            </ul>
+            <div className="text-sm font-medium">Eligibility:</div>
+            <div className="text-xs text-muted-foreground">
+              {award.eligibility}
+            </div>
           </div>
         </div>
 
@@ -134,7 +115,11 @@ export function AwardCard({ award }: AwardCardProps) {
               <Link href={ROUTES.AWARD_DETAILS(award.id)}>Apply Now</Link>
             </Button>
           ) : award.status === "closed" ? (
-            <Button variant="outline" className="w-full bg-transparent" disabled>
+            <Button
+              variant="outline"
+              className="w-full bg-transparent"
+              disabled
+            >
               Applications Closed
             </Button>
           ) : award.status === "upcoming" ? (
@@ -149,5 +134,5 @@ export function AwardCard({ award }: AwardCardProps) {
         </div>
       </CardContent>
     </Card>
-  )
+  );
 }
