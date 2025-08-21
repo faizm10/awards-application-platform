@@ -8,14 +8,16 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
 import { Upload, File, X, CheckCircle, AlertCircle } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { createClient } from "@/supabase/client"
+import { getCurrentUser } from "@/lib/auth"
 
 interface FileUploadProps {
-  label: string
+  label?: string
   accept?: string
   maxSize?: number // in MB
   required?: boolean
-  value?: string
-  onChange: (file: string | null) => void
+  currentFile?: string
+  onUpload: (url: string) => void
   className?: string
 }
 
@@ -24,8 +26,8 @@ export function FileUpload({
   accept = ".pdf,.doc,.docx",
   maxSize = 10,
   required = false,
-  value,
-  onChange,
+  currentFile,
+  onUpload,
   className,
 }: FileUploadProps) {
   const [isDragging, setIsDragging] = useState(false)
@@ -33,6 +35,47 @@ export function FileUpload({
   const [uploadProgress, setUploadProgress] = useState(0)
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleFileUpload = async (fieldName: string, file: File) => {
+    const supabase = createClient()
+    const user = getCurrentUser()
+    
+    if (!user) {
+      setError("User not authenticated")
+      return
+    }
+
+    const fileExt = file.name.split(".").pop()
+    const fileName = `${user.id}/${fieldName}_${Date.now()}.${fileExt}`
+    
+    try {
+      const { data, error } = await supabase.storage
+        .from("applications")
+        .upload(fileName, file)
+
+      if (error) {
+        console.error("Error uploading file:", error)
+        
+        // Check if it's an RLS policy error
+        if (error.message?.includes("row-level security policy") || error.message?.includes("RLS")) {
+          setError("Storage permissions not configured. Please contact administrator.")
+        } else {
+          setError("Failed to upload file. Please try again.")
+        }
+        return null
+      }
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("applications").getPublicUrl(fileName)
+
+      return publicUrl
+    } catch (err) {
+      console.error("Error uploading file:", err)
+      setError("Failed to upload file. Please try again.")
+      return null
+    }
+  }
 
   const handleFileSelect = async (file: File) => {
     setError(null)
@@ -51,22 +94,38 @@ export function FileUpload({
       return
     }
 
-    // Simulate file upload
+    // Start file upload
     setIsUploading(true)
     setUploadProgress(0)
 
     // Simulate upload progress
-    const interval = setInterval(() => {
+    const progressInterval = setInterval(() => {
       setUploadProgress((prev) => {
-        if (prev >= 100) {
-          clearInterval(interval)
-          setIsUploading(false)
-          onChange(file.name) // In real app, this would be the uploaded file URL
-          return 100
+        if (prev >= 90) {
+          clearInterval(progressInterval)
+          return 90
         }
         return prev + 10
       })
     }, 100)
+
+    try {
+      // Use the field name from the label or generate one
+      const fieldName = label?.toLowerCase().replace(/\s+/g, '_') || 'file'
+      const publicUrl = await handleFileUpload(fieldName, file)
+      
+      clearInterval(progressInterval)
+      setUploadProgress(100)
+      
+      if (publicUrl) {
+        onUpload(publicUrl)
+      }
+    } catch (err) {
+      clearInterval(progressInterval)
+      setError("Failed to upload file. Please try again.")
+    } finally {
+      setIsUploading(false)
+    }
   }
 
   const handleDrop = (e: React.DragEvent) => {
@@ -87,7 +146,7 @@ export function FileUpload({
   }
 
   const removeFile = () => {
-    onChange(null)
+    onUpload("")
     setUploadProgress(0)
     setError(null)
     if (fileInputRef.current) {
@@ -97,20 +156,22 @@ export function FileUpload({
 
   return (
     <div className={className}>
-      <label className="block text-sm font-medium mb-2">
-        {label}
-        {required && <span className="text-destructive ml-1">*</span>}
-      </label>
+      {label && (
+        <label className="block text-sm font-medium mb-2">
+          {label}
+          {required && <span className="text-destructive ml-1">*</span>}
+        </label>
+      )}
 
-      {value ? (
+      {currentFile ? (
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <CheckCircle className="h-5 w-5 text-green-600" />
                 <div>
-                  <div className="font-medium">{value}</div>
-                  <div className="text-sm text-muted-foreground">File uploaded successfully</div>
+                  <div className="font-medium">File uploaded successfully</div>
+                  <div className="text-sm text-muted-foreground">{currentFile}</div>
                 </div>
               </div>
               <Button variant="ghost" size="sm" onClick={removeFile}>

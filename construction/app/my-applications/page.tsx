@@ -1,23 +1,53 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Input } from "@/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Search, FileText, Calendar, DollarSign, Eye, Edit } from "lucide-react"
-import Link from "next/link"
-import { getCurrentUser } from "@/lib/auth"
-import { ROUTES } from "@/constants/routes"
-import { getApplicationsByStudent, getStatusColor, getStatusLabel } from "@/lib/applications"
-import { getAwardById } from "@/lib/awards"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Search,
+  FileText,
+  Calendar,
+  DollarSign,
+  Eye,
+  Edit,
+} from "lucide-react";
+import Link from "next/link";
+import { getCurrentUser } from "@/lib/auth";
+import { ROUTES } from "@/constants/routes";
+import {
+  getApplicationsByStudent,
+  getStatusColor,
+  getStatusLabel,
+} from "@/lib/applications";
+import { getAwardById } from "@/lib/awards";
 
 export default function MyApplicationsPage() {
-  const user = getCurrentUser()
-  const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
+  const user = getCurrentUser();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   if (!user || user.role !== "student") {
     return (
@@ -28,76 +58,45 @@ export default function MyApplicationsPage() {
           </CardContent>
         </Card>
       </div>
-    )
+    );
   }
 
-  const applications = getApplicationsByStudent(user.id)
+  const applications = getApplicationsByStudent(user.id);
 
   const filteredApplications = applications.filter((app) => {
-    const award = getAwardById(app.awardId)
-    const matchesSearch = award?.title.toLowerCase().includes(searchTerm.toLowerCase()) || false
-    const matchesStatus = statusFilter === "all" || app.status === statusFilter
+    const award = getAwardById(app.awardId);
+    const matchesSearch =
+      award?.title.toLowerCase().includes(searchTerm.toLowerCase()) || false;
+    const matchesStatus = statusFilter === "all" || app.status === statusFilter;
 
-    return matchesSearch && matchesStatus
-  })
+    return matchesSearch && matchesStatus;
+  });
 
   const getApplicationStats = () => {
-    const total = applications.length
-    const submitted = applications.filter((app) => app.status !== "draft").length
-    const underReview = applications.filter((app) => app.status === "under_review").length
-    const awarded = applications.filter((app) => app.status === "awarded").length
+    const total = applications.length;
+    const submitted = applications.filter(
+      (app) => app.status !== "draft"
+    ).length;
+    const underReview = applications.filter(
+      (app) => app.status === "under_review"
+    ).length;
+    const awarded = applications.filter(
+      (app) => app.status === "awarded"
+    ).length;
 
-    return { total, submitted, underReview, awarded }
-  }
+    return { total, submitted, underReview, awarded };
+  };
 
-  const stats = getApplicationStats()
+  const stats = getApplicationStats();
 
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-4">My Applications</h1>
-        <p className="text-muted-foreground">Track and manage your award applications</p>
-      </div>
-
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Applications</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Submitted</CardTitle>
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.submitted}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Under Review</CardTitle>
-            <Eye className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.underReview}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Awarded</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-primary">{stats.awarded}</div>
-          </CardContent>
-        </Card>
+        <p className="text-muted-foreground">
+          Track and manage your award applications
+        </p>
       </div>
 
       {/* Filters */}
@@ -139,7 +138,9 @@ export default function MyApplicationsPage() {
         <Card>
           <CardHeader>
             <CardTitle>Applications ({filteredApplications.length})</CardTitle>
-            <CardDescription>Your award applications and their current status</CardDescription>
+            <CardDescription>
+              Your award applications and their current status
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="overflow-x-auto">
@@ -156,35 +157,50 @@ export default function MyApplicationsPage() {
                 </TableHeader>
                 <TableBody>
                   {filteredApplications.map((application) => {
-                    const award = getAwardById(application.awardId)
-                    if (!award) return null
+                    const award = getAwardById(application.awardId);
+                    if (!award) return null;
 
                     return (
                       <TableRow key={application.id}>
                         <TableCell>
                           <div>
                             <div className="font-medium">{award.title}</div>
-                            <div className="text-sm text-muted-foreground">{award.faculty}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {award.faculty}
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="font-semibold text-primary">{award.value}</div>
+                          <div className="font-semibold text-primary">
+                            {award.value}
+                          </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline" className={getStatusColor(application.status)}>
+                          <Badge
+                            variant="outline"
+                            className={getStatusColor(application.status)}
+                          >
                             {getStatusLabel(application.status)}
                           </Badge>
                         </TableCell>
                         <TableCell>
                           {application.submittedAt
-                            ? new Date(application.submittedAt).toLocaleDateString()
+                            ? new Date(
+                                application.submittedAt
+                              ).toLocaleDateString()
                             : "Not submitted"}
                         </TableCell>
-                        <TableCell>{new Date(application.updatedAt).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          {new Date(application.updatedAt).toLocaleDateString()}
+                        </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
                             <Button variant="ghost" size="sm" asChild>
-                              <Link href={ROUTES.APPLICATION_DETAILS(application.id)}>
+                              <Link
+                                href={ROUTES.APPLICATION_DETAILS(
+                                  application.id
+                                )}
+                              >
                                 <Eye className="h-4 w-4" />
                               </Link>
                             </Button>
@@ -198,7 +214,7 @@ export default function MyApplicationsPage() {
                           </div>
                         </TableCell>
                       </TableRow>
-                    )
+                    );
                   })}
                 </TableBody>
               </Table>
@@ -209,7 +225,9 @@ export default function MyApplicationsPage() {
         <Card>
           <CardContent className="pt-6 text-center py-12">
             <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-lg font-semibold mb-2">No applications found</h3>
+            <h3 className="text-lg font-semibold mb-2">
+              No applications found
+            </h3>
             <p className="text-muted-foreground mb-4">
               {applications.length === 0
                 ? "You haven't applied for any awards yet."
@@ -223,8 +241,8 @@ export default function MyApplicationsPage() {
               <Button
                 variant="outline"
                 onClick={() => {
-                  setSearchTerm("")
-                  setStatusFilter("all")
+                  setSearchTerm("");
+                  setStatusFilter("all");
                 }}
               >
                 Clear Filters
@@ -234,5 +252,5 @@ export default function MyApplicationsPage() {
         </Card>
       )}
     </div>
-  )
+  );
 }

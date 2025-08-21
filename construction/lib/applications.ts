@@ -8,21 +8,9 @@ export interface Application {
   submittedAt?: string
   reviewedAt?: string
   reviewerComments?: string
-  formData: {
-    personalStatement?: string
-    gpa?: string
-    year?: string
-    program?: string
-    faculty?: string
-    additionalInfo?: string
-  }
-  documents: {
-    resume?: string
-    transcript?: string
-    personalStatement?: string
-    referenceLetters?: string[]
-    other?: { [key: string]: string }
-  }
+  formData: Record<string, string>
+  documents: Record<string, string>
+  essayResponses?: Record<string, string>
   createdAt: string
   updatedAt: string
 }
@@ -48,7 +36,6 @@ export const mockApplications: Application[] = [
       resume: "john_smith_resume.pdf",
       transcript: "john_smith_transcript.pdf",
       personalStatement: "john_smith_statement.pdf",
-      referenceLetters: ["prof_johnson_reference.pdf"],
     },
     createdAt: "2024-02-10T09:00:00Z",
     updatedAt: "2024-02-15T10:30:00Z",
@@ -72,11 +59,9 @@ export const mockApplications: Application[] = [
     },
     documents: {
       resume: "john_smith_resume.pdf",
-      other: {
-        "Community Service Portfolio": "community_service_portfolio.pdf",
-        "Reference Letter 1": "reference_1.pdf",
-        "Reference Letter 2": "reference_2.pdf",
-      },
+      "Community Service Portfolio": "community_service_portfolio.pdf",
+      "Reference Letter 1": "reference_1.pdf",
+      "Reference Letter 2": "reference_2.pdf",
     },
     createdAt: "2024-02-18T11:00:00Z",
     updatedAt: "2024-02-22T09:00:00Z",
@@ -139,7 +124,7 @@ export const createApplication = (
 
 export const updateApplication = (
   id: string,
-  updates: Partial<Pick<Application, "formData" | "documents" | "status">>,
+  updates: Partial<Pick<Application, "formData" | "documents" | "status" | "essayResponses" | "submittedAt">>,
 ): Application | null => {
   const index = mockApplications.findIndex((app) => app.id === id)
   if (index === -1) return null

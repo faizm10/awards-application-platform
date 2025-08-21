@@ -1,12 +1,18 @@
-"use client"
+"use client";
 
-import { use } from "react"
-import { notFound } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
-import { Progress } from "@/components/ui/progress"
+import { use } from "react";
+import { notFound } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
+import { Progress } from "@/components/ui/progress";
 import {
   Calendar,
   Users,
@@ -17,68 +23,103 @@ import {
   CheckCircle,
   Clock,
   ArrowLeft,
-} from "lucide-react"
-import Link from "next/link"
-import { ROUTES } from "@/constants/routes"
-import { getAwardById } from "@/lib/awards"
-import { getCurrentUser } from "@/lib/auth"
+  Loader2,
+} from "lucide-react";
+import Link from "next/link";
+import { ROUTES } from "@/constants/routes";
+import { useAward } from "@/hooks/use-award";
+import { useAwardRequirements } from "@/hooks/use-award-requirements";
+import { getCurrentUser } from "@/lib/auth";
 
 interface AwardDetailPageProps {
-  params: Promise<{ id: string }>
+  params: Promise<{ id: string }>;
 }
 
 export default function AwardDetailPage({ params }: AwardDetailPageProps) {
-  const { id } = use(params)
-  const award = getAwardById(id)
-  const user = getCurrentUser()
+  const { id } = use(params);
+  const { award, loading, error } = useAward(id);
+  const { requirements, loading: requirementsLoading, error: requirementsError } = useAwardRequirements(id);
+  const user = getCurrentUser();
 
-  if (!award) {
-    notFound()
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center py-12">
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-6 w-6 animate-spin" />
+            <span>Loading award details...</span>
+          </div>
+        </div>
+      </div>
+    );
   }
 
-  const isStudent = user?.role === "student"
-  const applicationProgress = award.maxApplications ? (award.applicationCount / award.maxApplications) * 100 : 0
+  // Show error state
+  if (error || !award) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Card className="text-center py-12">
+          <CardContent>
+            <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Error loading award</h3>
+            <p className="text-muted-foreground mb-4">
+              {error || "Award not found"}
+            </p>
+            <Button variant="outline" asChild>
+              <Link href={ROUTES.AWARDS}>Back to Awards</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const isStudent = user?.role === "student";
+  const applicationProgress = award.application_count
+    ? (award.application_count / 100) * 100
+    : 0;
 
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "open":
-        return <CheckCircle className="h-5 w-5 text-green-600" />
+        return <CheckCircle className="h-5 w-5 text-green-600" />;
       case "closed":
-        return <AlertCircle className="h-5 w-5 text-red-600" />
+        return <AlertCircle className="h-5 w-5 text-red-600" />;
       case "upcoming":
-        return <Clock className="h-5 w-5 text-blue-600" />
+        return <Clock className="h-5 w-5 text-blue-600" />;
       default:
-        return <AlertCircle className="h-5 w-5 text-gray-600" />
+        return <AlertCircle className="h-5 w-5 text-gray-600" />;
     }
-  }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "open":
-        return "bg-green-100 text-green-800 border-green-200"
+        return "bg-green-100 text-green-800 border-green-200";
       case "closed":
-        return "bg-red-100 text-red-800 border-red-200"
+        return "bg-red-100 text-red-800 border-red-200";
       case "upcoming":
-        return "bg-blue-100 text-blue-800 border-blue-200"
+        return "bg-blue-100 text-blue-800 border-blue-200";
       default:
-        return "bg-gray-100 text-gray-800 border-gray-200"
+        return "bg-gray-100 text-gray-800 border-gray-200";
     }
-  }
+  };
 
   const getTypeColor = (type: string) => {
     switch (type) {
       case "scholarship":
-        return "bg-primary/10 text-primary border-primary/20"
+        return "bg-primary/10 text-primary border-primary/20";
       case "grant":
-        return "bg-secondary/10 text-secondary-foreground border-secondary/20"
+        return "bg-secondary/10 text-secondary-foreground border-secondary/20";
       case "bursary":
-        return "bg-blue-100 text-blue-800 border-blue-200"
+        return "bg-blue-100 text-blue-800 border-blue-200";
       case "prize":
-        return "bg-purple-100 text-purple-800 border-purple-200"
+        return "bg-purple-100 text-purple-800 border-purple-200";
       default:
-        return "bg-gray-100 text-gray-800 border-gray-200"
+        return "bg-gray-100 text-gray-800 border-gray-200";
     }
-  }
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -101,109 +142,167 @@ export default function AwardDetailPage({ params }: AwardDetailPageProps) {
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <CardTitle className="text-2xl mb-2">{award.title}</CardTitle>
-                  <CardDescription className="text-base">{award.description}</CardDescription>
+                  <CardDescription className="text-base">
+                    {award.description}
+                  </CardDescription>
                 </div>
                 <div className="flex flex-col gap-2">
-                  <Badge variant="outline" className={getStatusColor(award.status)}>
+                  <Badge
+                    variant="outline"
+                    className={getStatusColor(award.status)}
+                  >
                     {getStatusIcon(award.status)}
                     <span className="ml-1 capitalize">{award.status}</span>
                   </Badge>
-                  <Badge variant="outline" className={getTypeColor(award.awardType)}>
-                    <span className="capitalize">{award.awardType}</span>
+                  <Badge
+                    variant="outline"
+                    className={getTypeColor(award.category)}
+                  >
+                    <span className="capitalize">{award.category}</span>
                   </Badge>
                 </div>
               </div>
             </CardHeader>
           </Card>
 
-          {/* Full Description */}
+          {/* Award Details */}
           <Card>
             <CardHeader>
-              <CardTitle>About This Award</CardTitle>
+              <CardTitle>Award Information</CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground leading-relaxed">{award.fullDescription}</p>
-            </CardContent>
-          </Card>
+            <CardContent className="space-y-6">
+              {/* Award Name */}
+              <div>
+                <h3 className="font-semibold text-lg mb-2">Award Name</h3>
+                <p className="text-muted-foreground">{award.title}</p>
+              </div>
 
-          {/* Eligibility Requirements */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Eligibility Requirements</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-3">
-                {award.eligibility.map((requirement, index) => (
-                  <li key={index} className="flex items-start gap-3">
-                    <CheckCircle className="h-5 w-5 text-green-600 mt-0.5 flex-shrink-0" />
-                    <span>{requirement}</span>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
+              {/* Amount */}
+              <div>
+                <h3 className="font-semibold text-lg mb-2">Amount</h3>
+                <p className="text-primary font-semibold text-lg">
+                  {award.value}
+                </p>
+              </div>
 
-          {/* Academic Requirements */}
-          {(award.requirements.gpa || award.requirements.year?.length || award.requirements.program?.length) && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <GraduationCap className="h-5 w-5" />
-                  Academic Requirements
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {award.requirements.gpa && (
-                  <div>
-                    <span className="font-medium">Minimum GPA:</span>
-                    <span className="ml-2 text-primary font-semibold">{award.requirements.gpa}</span>
-                  </div>
-                )}
-                {award.requirements.year?.length && (
-                  <div>
-                    <span className="font-medium">Eligible Years:</span>
-                    <div className="mt-1 flex flex-wrap gap-2">
-                      {award.requirements.year.map((year) => (
-                        <Badge key={year} variant="outline">
-                          Year {year}
-                        </Badge>
-                      ))}
+              {/* Deadline */}
+              <div>
+                <h3 className="font-semibold text-lg mb-2">Deadline</h3>
+                <p className="text-muted-foreground">
+                  {new Date(award.deadline).toLocaleDateString()}
+                </p>
+              </div>
+
+              {/* Description */}
+              <div>
+                <h3 className="font-semibold text-lg mb-2">Description</h3>
+                <p className="text-muted-foreground leading-relaxed">
+                  {award.description}
+                </p>
+              </div>
+
+              {/* Selection Criteria (formerly Eligibility) */}
+              <div>
+                <h3 className="font-semibold text-lg mb-2">
+                  Selection Criteria
+                </h3>
+                <p className="text-muted-foreground leading-relaxed">
+                  {award.eligibility}
+                </p>
+              </div>
+
+              {/* Citizenship Requirements */}
+              <div>
+                <h3 className="font-semibold text-lg mb-2">
+                  Citizenship Requirements
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {award.citizenship && award.citizenship.length > 0 ? (
+                    award.citizenship.map((citizenship, index) => (
+                      <Badge key={index} variant="outline">
+                        {citizenship}
+                      </Badge>
+                    ))
+                  ) : (
+                    <p className="text-muted-foreground">
+                      No specific citizenship requirements
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Application Requirements */}
+              <div>
+                <h3 className="font-semibold text-lg mb-2">
+                  Application Requirements
+                </h3>
+                <div className="space-y-4">
+                  {/* Application Method */}
+                  <div className="flex items-start gap-3">
+                    <FileText className="h-4 w-4 text-muted-foreground mt-0.5" />
+                    <div>
+                      <p className="font-medium">Application Method</p>
+                      <p className="text-muted-foreground">
+                        {award.application_method}
+                      </p>
                     </div>
                   </div>
-                )}
-                {award.requirements.program?.length && (
-                  <div>
-                    <span className="font-medium">Eligible Programs:</span>
-                    <div className="mt-1 flex flex-wrap gap-2">
-                      {award.requirements.program.map((program) => (
-                        <Badge key={program} variant="outline">
-                          {program}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
 
-          {/* Required Documents */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Required Documents
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-2">
-                {award.requirements.documents.map((document, index) => (
-                  <li key={index} className="flex items-center gap-3">
-                    <FileText className="h-4 w-4 text-muted-foreground" />
-                    <span>{document}</span>
-                  </li>
-                ))}
-              </ul>
+                  {/* Required Fields */}
+                  {requirementsLoading ? (
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      <span className="text-sm text-muted-foreground">Loading requirements...</span>
+                    </div>
+                  ) : requirementsError ? (
+                    <div className="text-sm text-destructive">
+                      Error loading requirements: {requirementsError}
+                    </div>
+                  ) : requirements.length > 0 ? (
+                    <div className="space-y-3">
+                      <p className="font-medium">Required Information:</p>
+                      <div className="space-y-2">
+                        {requirements.map((requirement) => (
+                          <div key={requirement.id} className="flex items-start gap-3 p-3 bg-muted/50 rounded-lg">
+                            <div className="flex-shrink-0">
+                              {requirement.type === "file" && <FileText className="h-4 w-4 text-muted-foreground" />}
+                              {requirement.type === "text" && <GraduationCap className="h-4 w-4 text-muted-foreground" />}
+                              {requirement.type === "textarea" && <FileText className="h-4 w-4 text-muted-foreground" />}
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-medium">{requirement.label}</span>
+                                {requirement.required && (
+                                  <Badge variant="destructive" className="text-xs">
+                                    Required
+                                  </Badge>
+                                )}
+                                <Badge variant="outline" className="text-xs">
+                                  {requirement.type}
+                                </Badge>
+                              </div>
+                              {requirement.question && (
+                                <p className="text-sm text-muted-foreground mb-1">
+                                  {requirement.question}
+                                </p>
+                              )}
+                              {requirement.description && (
+                                <p className="text-xs text-muted-foreground">
+                                  {requirement.description}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">
+                      No specific requirements defined for this award.
+                    </div>
+                  )}
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -213,14 +312,18 @@ export default function AwardDetailPage({ params }: AwardDetailPageProps) {
           {/* Quick Info */}
           <Card>
             <CardHeader>
-              <CardTitle>Award Details</CardTitle>
+              <CardTitle>Quick Information</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center gap-3">
                 <DollarSign className="h-5 w-5 text-primary" />
                 <div>
-                  <div className="font-semibold text-lg text-primary">{award.value}</div>
-                  <div className="text-sm text-muted-foreground">Award Value</div>
+                  <div className="font-semibold text-lg text-primary">
+                    {award.value}
+                  </div>
+                  <div className="text-sm text-muted-foreground">
+                    Award Value
+                  </div>
                 </div>
               </div>
 
@@ -229,43 +332,31 @@ export default function AwardDetailPage({ params }: AwardDetailPageProps) {
               <div className="flex items-center gap-3">
                 <Calendar className="h-5 w-5 text-muted-foreground" />
                 <div>
-                  <div className="font-medium">{new Date(award.deadline).toLocaleDateString()}</div>
-                  <div className="text-sm text-muted-foreground">Application Deadline</div>
-                </div>
-              </div>
-
-              <Separator />
-
-              <div className="flex items-center gap-3">
-                <Users className="h-5 w-5 text-muted-foreground" />
-                <div>
                   <div className="font-medium">
-                    {award.applicationCount}
-                    {award.maxApplications && ` / ${award.maxApplications}`}
+                    {new Date(award.deadline).toLocaleDateString()}
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    {award.maxApplications ? "Applications" : "Current Applicants"}
+                    Application Deadline
                   </div>
                 </div>
               </div>
-
-              {award.maxApplications && (
-                <>
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-sm">
-                      <span>Application Progress</span>
-                      <span>{Math.round(applicationProgress)}%</span>
-                    </div>
-                    <Progress value={applicationProgress} className="h-2" />
-                  </div>
-                </>
-              )}
 
               <Separator />
 
               <div>
-                <div className="font-medium mb-1">Faculty</div>
-                <div className="text-sm text-muted-foreground">{award.faculty}</div>
+                <div className="font-medium mb-1">Donor</div>
+                <div className="text-sm text-muted-foreground">
+                  {award.donor}
+                </div>
+              </div>
+
+              <Separator />
+
+              <div>
+                <div className="font-medium mb-1">Category</div>
+                <div className="text-sm text-muted-foreground">
+                  {award.category}
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -282,7 +373,8 @@ export default function AwardDetailPage({ params }: AwardDetailPageProps) {
                     </Link>
                   </Button>
                   <p className="text-xs text-muted-foreground text-center">
-                    Make sure you have all required documents ready before starting your application.
+                    Make sure you have all required documents ready before
+                    starting your application.
                   </p>
                 </div>
               ) : award.status === "closed" ? (
@@ -290,17 +382,31 @@ export default function AwardDetailPage({ params }: AwardDetailPageProps) {
                   <Button size="lg" className="w-full" disabled>
                     Applications Closed
                   </Button>
-                  <p className="text-xs text-muted-foreground">The application deadline has passed for this award.</p>
+                  <p className="text-xs text-muted-foreground">
+                    The application deadline has passed for this award.
+                  </p>
                 </div>
               ) : award.status === "upcoming" ? (
                 <div className="text-center space-y-2">
-                  <Button size="lg" variant="outline" className="w-full bg-transparent" disabled>
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className="w-full bg-transparent"
+                    disabled
+                  >
                     Applications Open Soon
                   </Button>
-                  <p className="text-xs text-muted-foreground">Applications will open closer to the deadline date.</p>
+                  <p className="text-xs text-muted-foreground">
+                    Applications will open closer to the deadline date.
+                  </p>
                 </div>
               ) : (
-                <Button size="lg" variant="outline" className="w-full bg-transparent" asChild>
+                <Button
+                  size="lg"
+                  variant="outline"
+                  className="w-full bg-transparent"
+                  asChild
+                >
                   <Link href={ROUTES.AWARDS}>Browse Other Awards</Link>
                 </Button>
               )}
@@ -317,7 +423,12 @@ export default function AwardDetailPage({ params }: AwardDetailPageProps) {
                 Have questions about this award or the application process?
               </p>
               <div className="space-y-2">
-                <Button variant="outline" size="sm" className="w-full bg-transparent" asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full bg-transparent"
+                  asChild
+                >
                   <Link href="/contact">Contact Support</Link>
                 </Button>
                 <Button variant="ghost" size="sm" className="w-full" asChild>
@@ -329,5 +440,5 @@ export default function AwardDetailPage({ params }: AwardDetailPageProps) {
         </div>
       </div>
     </div>
-  )
+  );
 }

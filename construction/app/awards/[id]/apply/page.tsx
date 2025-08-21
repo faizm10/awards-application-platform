@@ -1,171 +1,355 @@
-"use client"
+"use client";
 
-import { use, useState } from "react"
-import { notFound, useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Separator } from "@/components/ui/separator"
-import { Badge } from "@/components/ui/badge"
-import { Progress } from "@/components/ui/progress"
-import { ArrowLeft, Save, Send, AlertCircle, CheckCircle } from "lucide-react"
-import Link from "next/link"
-import { getAwardById } from "@/lib/awards"
-import { getCurrentUser } from "@/lib/auth"
+import { useEffect, useState } from "react";
+import { notFound, useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { ArrowLeft, Save, Send, AlertCircle, CheckCircle, FileText, Upload } from "lucide-react";
+import Link from "next/link";
+import { useAward } from "@/hooks/use-award";
+import { useAwardRequirements } from "@/hooks/use-award-requirements";
+import { getCurrentUser } from "@/lib/auth";
 import {
   getApplicationByAwardAndStudent,
   createApplication,
   updateApplication,
   type Application,
-} from "@/lib/applications"
-import { FileUpload } from "@/components/file-upload"
-import { useToast } from "@/hooks/use-toast"
+} from "@/lib/applications";
+import { FileUpload } from "@/components/file-upload";
+import { toast } from "sonner";
 
 interface ApplyPageProps {
-  params: Promise<{ id: string }>
+  params: Promise<{ id: string }>;
 }
 
 export default function ApplyPage({ params }: ApplyPageProps) {
-  const router = useRouter()
-  const { toast } = useToast()
-  const [id, setId] = useState<string | null>(null)
-  const [user, setUser] = useState<any | null>(null)
-  const [award, setAward] = useState<any | null>(null)
-  const [existingApplication, setExistingApplication] = useState<Application | null>(null)
-  const [formData, setFormData] = useState<Application["formData"]>({
-    gpa: "",
-    year: "",
-    program: "",
-    faculty: "",
-    personalStatement: "",
-    additionalInfo: "",
-  })
-  const [documents, setDocuments] = useState<Application["documents"]>({})
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const router = useRouter();
+  const [id, setId] = useState<string | null>(null);
+  const user = getCurrentUser();
 
-  use(
+  const [existingApplication, setExistingApplication] =
+    useState<Application | null>(null);
+  const [formData, setFormData] = useState<Record<string, string>>({});
+  const [documents, setDocuments] = useState<Record<string, string>>({});
+  const [essayResponses, setEssayResponses] = useState<Record<string, string>>({});
+  const [wordCounts, setWordCounts] = useState<Record<string, number>>({});
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
+
+  // Get the award ID from params
+  useEffect(() => {
     params.then(({ id }) => {
-      setId(id)
-      const awardData = getAwardById(id)
-      setAward(awardData)
-      const userData = getCurrentUser()
-      setUser(userData)
-      if (userData && userData.role === "student") {
-        const existingApp = getApplicationByAwardAndStudent(id, userData.id)
-        setExistingApplication(existingApp)
-        if (existingApp) {
-          setFormData(existingApp.formData)
-          setDocuments(existingApp.documents)
-        }
-      } else {
-        router.push("/login")
-      }
-    }),
-  )
+      setId(id);
+    });
+  }, [params]);
 
-  if (!award) {
-    notFound()
+  // Fetch award and requirements data
+  const {
+    award,
+    loading: awardLoading,
+    error: awardError,
+  } = useAward(id || "");
+  const {
+    requirements,
+    loading: requirementsLoading,
+    error: requirementsError,
+  } = useAwardRequirements(id || "");
+
+  // Initialize form data when award and requirements are loaded
+  useEffect(() => {
+    if (id && user && user.role === "student") {
+      const existingApp = getApplicationByAwardAndStudent(id, user.id);
+      setExistingApplication(existingApp || null);
+      if (existingApp) {
+        setFormData(existingApp.formData || {});
+        setDocuments(existingApp.documents || {});
+        
+        // Handle essay responses if they exist
+        if (existingApp.essayResponses) {
+          setEssayResponses(existingApp.essayResponses);
+          // Calculate word counts for essays
+          const counts: Record<string, number> = {};
+          Object.keys(existingApp.essayResponses).forEach((key) => {
+            counts[key] = countWords(existingApp.essayResponses[key] || "");
+          });
+          setWordCounts(counts);
+        }
+      }
+    } else if (user && user.role !== "student") {
+      router.push("/login");
+    }
+  }, [id, user, router]);
+
+  const countWords = (text: string): number => {
+    return text
+      .trim()
+      .split(/\s+/)
+      .filter((word) => word.length > 0).length;
+  };
+
+  // Show loading state
+  if (awardLoading || requirementsLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center py-12">
+          <div className="flex items-center gap-2">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+            <span>Loading application form...</span>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (awardError || requirementsError || !award) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Card className="text-center py-12">
+          <CardContent>
+            <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">
+              Error loading application
+            </h3>
+            <p className="text-muted-foreground mb-4">
+              {awardError || requirementsError || "Award not found"}
+            </p>
+            <Button variant="outline" asChild>
+              <Link href={`/awards/${id}`}>Back to Award Details</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   if (!user || user.role !== "student") {
-    return null
+    return null;
   }
 
-  const handleInputChange = (field: keyof Application["formData"], value: string) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-  }
+  const handleInputChange = (fieldName: string, value: string) => {
+    const requirement = requirements?.find(req => req.field_name === fieldName);
+    
+    if (requirement?.field_config?.type === "essay") {
+      // Handle essay responses separately
+      const essayKey = `essay_response_${requirement.id}`;
+      setEssayResponses((prev) => ({
+        ...prev,
+        [essayKey]: value,
+      }));
 
-  const handleDocumentChange = (field: string, value: string | null) => {
-    setDocuments((prev) => ({ ...prev, [field]: value }))
-  }
+      // Update word count
+      setWordCounts((prev) => ({
+        ...prev,
+        [essayKey]: countWords(value),
+      }));
+    } else {
+      // Handle regular form fields
+      setFormData((prev) => ({ ...prev, [fieldName]: value }));
+    }
+  };
+
+  const handleDocumentChange = (fieldName: string, url: string) => {
+    setDocuments((prev) => ({ ...prev, [fieldName]: url }));
+  };
 
   const calculateProgress = () => {
-    const requiredFields = ["gpa", "year", "program", "faculty"]
-    const filledFields = requiredFields.filter((field) => formData[field as keyof typeof formData])
-    const requiredDocs = award.requirements.documents
-    const uploadedDocs = requiredDocs.filter((doc) => {
-      const docKey = doc.toLowerCase().replace(/\s+/g, "")
-      return documents[docKey as keyof typeof documents]
-    })
+    if (!requirements || requirements.length === 0) return 100;
 
-    const totalRequired = requiredFields.length + requiredDocs.length
-    const totalCompleted = filledFields.length + uploadedDocs.length
+    const requiredFields = requirements.filter((req) => req.required);
+    const filledFields = requiredFields.filter((req) => {
+      if (req.type === "file") {
+        return documents[req.field_name];
+      } else if (req.field_config?.type === "essay") {
+        const essayKey = `essay_response_${req.id}`;
+        return essayResponses[essayKey] && essayResponses[essayKey].trim() !== "";
+      } else {
+        return formData[req.field_name] && formData[req.field_name].trim() !== "";
+      }
+    });
 
-    return Math.round((totalCompleted / totalRequired) * 100)
-  }
+    return Math.round((filledFields.length / requiredFields.length) * 100);
+  };
 
   const isFormValid = () => {
-    const requiredFieldsFilled = formData.gpa && formData.year && formData.program && formData.faculty
-    const requiredDocsUploaded = award.requirements.documents.every((doc) => {
-      const docKey = doc.toLowerCase().replace(/\s+/g, "")
-      return documents[docKey as keyof typeof documents]
-    })
+    if (!requirements || requirements.length === 0) return true;
 
-    return requiredFieldsFilled && requiredDocsUploaded
-  }
+    const requiredFields = requirements.filter((req) => req.required);
+    return requiredFields.every((req) => {
+      if (req.type === "file") {
+        return documents[req.field_name];
+      } else if (req.field_config?.type === "essay") {
+        const essayKey = `essay_response_${req.id}`;
+        const response = essayResponses[essayKey];
+        if (!response || response.trim() === "") return false;
+        
+        // Check word limit if specified
+        if (req.field_config.word_limit) {
+          const wordCount = wordCounts[essayKey] || 0;
+          return wordCount <= req.field_config.word_limit;
+        }
+        return true;
+      } else {
+        return formData[req.field_name] && formData[req.field_name].trim() !== "";
+      }
+    });
+  };
 
   const handleSaveDraft = async () => {
+    setIsSaving(true);
     try {
+      const applicationData = {
+        formData,
+        documents,
+        essayResponses,
+        status: "draft",
+      };
+
       if (existingApplication) {
-        updateApplication(existingApplication.id, { formData, documents })
+        updateApplication(existingApplication.id, applicationData);
       } else {
-        createApplication(id!, user.id, formData, documents)
+        const newApp = createApplication(id!, user.id, formData, documents);
+        updateApplication(newApp.id, { essayResponses });
       }
 
-      toast({
-        title: "Draft Saved",
-        description: "Your application has been saved as a draft.",
-      })
+      toast("Draft saved successfully!");
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to save draft. Please try again.",
-        variant: "destructive",
-      })
+      toast("Failed to save draft. Please try again.");
+    } finally {
+      setIsSaving(false);
     }
-  }
+  };
 
   const handleSubmit = async () => {
     if (!isFormValid()) {
-      toast({
-        title: "Incomplete Application",
-        description: "Please fill in all required fields and upload all required documents.",
-        variant: "destructive",
-      })
-      return
+      const missingFields = requirements?.filter((req) => {
+        if (!req.required) return false;
+
+        if (req.type === "file") {
+          return !documents[req.field_name];
+        } else if (req.field_config?.type === "essay") {
+          const essayKey = `essay_response_${req.id}`;
+          const response = essayResponses[essayKey];
+          if (!response || response.trim() === "") return true;
+          
+          if (req.field_config.word_limit) {
+            const wordCount = wordCounts[essayKey] || 0;
+            return wordCount > req.field_config.word_limit;
+          }
+          return false;
+        } else {
+          return !formData[req.field_name] || formData[req.field_name].trim() === "";
+        }
+      });
+
+      if (missingFields && missingFields.length > 0) {
+        toast(
+          `Please complete all required fields: ${missingFields
+            .map((f) => f.label)
+            .join(", ")}`
+        );
+      } else {
+        toast("Please fill in all required fields and upload all required documents.");
+      }
+      return;
     }
 
-    setIsSubmitting(true)
+    setIsSubmitting(true);
 
     try {
+      const applicationData = {
+        formData,
+        documents,
+        essayResponses,
+        status: "submitted",
+        submittedAt: new Date().toISOString(),
+      };
+
       if (existingApplication) {
-        updateApplication(existingApplication.id, { formData, documents, status: "submitted" })
+        updateApplication(existingApplication.id, applicationData);
       } else {
-        const newApp = createApplication(id!, user.id, formData, documents)
-        updateApplication(newApp.id, { status: "submitted" })
+        const newApp = createApplication(id!, user.id, formData, documents);
+        updateApplication(newApp.id, { 
+          essayResponses, 
+          status: "submitted",
+          submittedAt: new Date().toISOString(),
+        });
       }
 
-      toast({
-        title: "Application Submitted",
-        description: "Your application has been successfully submitted for review.",
-      })
-
-      router.push("/my-applications")
+      toast("Your application has been successfully submitted for review.");
+      router.push("/my-applications");
     } catch (error) {
-      toast({
-        title: "Submission Failed",
-        description: "Failed to submit application. Please try again.",
-        variant: "destructive",
-      })
+      toast("Failed to submit application. Please try again.");
     } finally {
-      setIsSubmitting(false)
+      setIsSubmitting(false);
     }
-  }
+  };
 
-  const progress = calculateProgress()
+  const handleSubmitClick = () => {
+    if (!isFormValid()) {
+      const missingFields = requirements?.filter((req) => {
+        if (!req.required) return false;
+
+        if (req.type === "file") {
+          return !documents[req.field_name];
+        } else if (req.field_config?.type === "essay") {
+          const essayKey = `essay_response_${req.id}`;
+          const response = essayResponses[essayKey];
+          if (!response || response.trim() === "") return true;
+          
+          if (req.field_config.word_limit) {
+            const wordCount = wordCounts[essayKey] || 0;
+            return wordCount > req.field_config.word_limit;
+          }
+          return false;
+        } else {
+          return !formData[req.field_name] || formData[req.field_name].trim() === "";
+        }
+      });
+
+      if (missingFields && missingFields.length > 0) {
+        toast(
+          `Please complete all required fields: ${missingFields
+            .map((f) => f.label)
+            .join(", ")}`
+        );
+      } else {
+        toast("Please fill in all required fields and upload all required documents.");
+      }
+      return;
+    }
+
+    // Show confirmation modal
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirmSubmit = async () => {
+    setShowConfirmModal(false);
+    await handleSubmit();
+  };
+
+  const progress = calculateProgress();
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -185,9 +369,12 @@ export default function ApplyPage({ params }: ApplyPageProps) {
           {/* Header */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-2xl">Apply for {award.title}</CardTitle>
+              <CardTitle className="text-2xl">
+                Apply for {award.title}
+              </CardTitle>
               <CardDescription>
-                Complete all required fields and upload necessary documents to submit your application.
+                Complete all required fields and upload necessary documents to
+                submit your application.
               </CardDescription>
               <div className="flex items-center gap-4 pt-2">
                 <div className="flex-1">
@@ -198,7 +385,10 @@ export default function ApplyPage({ params }: ApplyPageProps) {
                   <Progress value={progress} className="h-2" />
                 </div>
                 {existingApplication?.status === "draft" && (
-                  <Badge variant="outline" className="bg-gray-100 text-gray-800 border-gray-200">
+                  <Badge
+                    variant="outline"
+                    className="bg-gray-100 text-gray-800 border-gray-200"
+                  >
                     Draft
                   </Badge>
                 )}
@@ -206,144 +396,155 @@ export default function ApplyPage({ params }: ApplyPageProps) {
             </CardHeader>
           </Card>
 
-          {/* Personal Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Personal Information</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="gpa">Current GPA *</Label>
-                  <Input
-                    id="gpa"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    max="4.0"
-                    placeholder="3.75"
-                    value={formData.gpa}
-                    onChange={(e) => handleInputChange("gpa", e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="year">Current Year *</Label>
-                  <Select value={formData.year} onValueChange={(value) => handleInputChange("year", value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select year" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1">Year 1</SelectItem>
-                      <SelectItem value="2">Year 2</SelectItem>
-                      <SelectItem value="3">Year 3</SelectItem>
-                      <SelectItem value="4">Year 4</SelectItem>
-                      <SelectItem value="5+">Year 5+</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+          {/* Dynamic Form Fields */}
+          {requirements && requirements.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Application Information</CardTitle>
+                <CardDescription>
+                  Please provide all the required information for this award
+                  application.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {requirements.map((requirement) => {
+                  const isEssay = requirement.field_config?.type === "essay";
+                  const essayKey = `essay_response_${requirement.id}`;
+                  const value = isEssay
+                    ? essayResponses[essayKey] || ""
+                    : formData[requirement.field_name] || "";
+                  const wordCount = isEssay ? wordCounts[essayKey] || 0 : 0;
+                  const wordLimit = requirement.field_config?.word_limit;
+                  const isOverLimit = wordLimit && wordCount > wordLimit;
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="program">Program of Study *</Label>
-                  <Input
-                    id="program"
-                    placeholder="e.g., Computer Engineering"
-                    value={formData.program}
-                    onChange={(e) => handleInputChange("program", e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="faculty">Faculty *</Label>
-                  <Select value={formData.faculty} onValueChange={(value) => handleInputChange("faculty", value)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select faculty" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="College of Engineering and Physical Sciences">
-                        College of Engineering and Physical Sciences
-                      </SelectItem>
-                      <SelectItem value="College of Arts">College of Arts</SelectItem>
-                      <SelectItem value="College of Biological Science">College of Biological Science</SelectItem>
-                      <SelectItem value="Ontario Agricultural College">Ontario Agricultural College</SelectItem>
-                      <SelectItem value="College of Business and Economics">
-                        College of Business and Economics
-                      </SelectItem>
-                      <SelectItem value="College of Social and Applied Human Sciences">
-                        College of Social and Applied Human Sciences
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+                  return (
+                    <div key={requirement.id} className="space-y-2">
+                      <Label htmlFor={requirement.field_name} className="flex items-center gap-2">
+                        {requirement.type === "file" ? (
+                          <Upload className="w-4 h-4" />
+                        ) : (
+                          <FileText className="w-4 h-4" />
+                        )}
+                        {requirement.label}
+                        {requirement.required && (
+                          <span className="text-destructive ml-1">*</span>
+                        )}
+                      </Label>
 
-          {/* Personal Statement */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Personal Statement</CardTitle>
-              <CardDescription>
-                Tell us about yourself, your achievements, and why you deserve this award.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Textarea
-                placeholder="Write your personal statement here..."
-                value={formData.personalStatement}
-                onChange={(e) => handleInputChange("personalStatement", e.target.value)}
-                className="min-h-[200px]"
-              />
-            </CardContent>
-          </Card>
+                      {requirement.description && (
+                        <p className="text-sm text-muted-foreground">
+                          {requirement.description}
+                        </p>
+                      )}
 
-          {/* Additional Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Additional Information</CardTitle>
-              <CardDescription>Any additional information that supports your application.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Textarea
-                placeholder="Include any relevant experiences, achievements, or circumstances..."
-                value={formData.additionalInfo}
-                onChange={(e) => handleInputChange("additionalInfo", e.target.value)}
-                className="min-h-[150px]"
-              />
-            </CardContent>
-          </Card>
+                      {requirement.field_config?.question && (
+                        <div className="p-3 bg-muted/50 rounded-lg border-l-4 border-primary">
+                          <p className="text-sm font-medium text-foreground">
+                            {requirement.field_config.question}
+                          </p>
+                        </div>
+                      )}
 
-          {/* Required Documents */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Required Documents</CardTitle>
-              <CardDescription>Upload all required documents for your application.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {award.requirements.documents.map((document) => {
-                const docKey = document.toLowerCase().replace(/\s+/g, "")
-                return (
-                  <FileUpload
-                    key={document}
-                    label={document}
-                    required
-                    value={documents[docKey as keyof typeof documents] as string}
-                    onChange={(file) => handleDocumentChange(docKey, file)}
-                  />
-                )
-              })}
-            </CardContent>
-          </Card>
+                      {requirement.type === "file" ? (
+                        <FileUpload
+                          label={requirement.label}
+                          onUpload={(url) =>
+                            handleDocumentChange(requirement.field_name, url)
+                          }
+                          currentFile={documents[requirement.field_name]}
+                          accept=".pdf,.doc,.docx"
+                          required={requirement.required}
+                        />
+                      ) : requirement.type === "textarea" || isEssay ? (
+                        <div className="space-y-2">
+                          <Textarea
+                            id={requirement.field_name}
+                            placeholder={
+                              requirement.field_config?.placeholder ||
+                              requirement.question ||
+                              `Enter your ${requirement.label.toLowerCase()}...`
+                            }
+                            value={value}
+                            onChange={(e) =>
+                              handleInputChange(requirement.field_name, e.target.value)
+                            }
+                            rows={isEssay ? 8 : 4}
+                            className={isOverLimit ? "border-red-500" : ""}
+                          />
+
+                          {isEssay && (
+                            <div className="flex justify-between items-center text-sm">
+                              <span
+                                className={`${
+                                  isOverLimit ? "text-red-500" : "text-muted-foreground"
+                                }`}
+                              >
+                                Word count: {wordCount}
+                                {wordLimit && ` / ${wordLimit}`}
+                              </span>
+                              {isOverLimit && (
+                                <span className="text-red-500 flex items-center gap-1">
+                                  <AlertCircle className="w-4 h-4" />
+                                  Exceeds word limit
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <Input
+                          id={requirement.field_name}
+                          type="text"
+                          placeholder={
+                            requirement.field_config?.placeholder ||
+                            requirement.question ||
+                            `Enter your ${requirement.label.toLowerCase()}...`
+                          }
+                          value={value}
+                          onChange={(e) =>
+                            handleInputChange(requirement.field_name, e.target.value)
+                          }
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* No Requirements Message */}
+          {(!requirements || requirements.length === 0) && (
+            <Card>
+              <CardContent className="text-center py-8">
+                <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No Specific Requirements</h3>
+                <p className="text-muted-foreground">
+                  This award doesn't have specific application requirements. You can proceed with the submission.
+                </p>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Action Buttons */}
           <Card>
             <CardContent className="pt-6">
               <div className="flex flex-col sm:flex-row gap-4">
-                <Button variant="outline" onClick={handleSaveDraft} className="flex-1 bg-transparent">
+                <Button 
+                  variant="outline" 
+                  onClick={handleSaveDraft} 
+                  disabled={isSaving}
+                  className="flex-1 bg-transparent"
+                >
                   <Save className="h-4 w-4 mr-2" />
-                  Save Draft
+                  {isSaving ? "Saving..." : "Save Draft"}
                 </Button>
-                <Button onClick={handleSubmit} disabled={!isFormValid() || isSubmitting} className="flex-1" size="lg">
+                <Button 
+                  onClick={handleSubmitClick} 
+                  disabled={!isFormValid() || isSubmitting} 
+                  className="flex-1" 
+                  size="lg"
+                >
                   <Send className="h-4 w-4 mr-2" />
                   {isSubmitting ? "Submitting..." : "Submit Application"}
                 </Button>
@@ -377,8 +578,8 @@ export default function ApplyPage({ params }: ApplyPageProps) {
               </div>
               <Separator />
               <div>
-                <div className="font-medium">{award.faculty}</div>
-                <div className="text-sm text-muted-foreground">Faculty</div>
+                <div className="font-medium">{award.category}</div>
+                <div className="text-sm text-muted-foreground">Category</div>
               </div>
             </CardContent>
           </Card>
@@ -389,65 +590,70 @@ export default function ApplyPage({ params }: ApplyPageProps) {
               <CardTitle className="text-lg">Requirements Checklist</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="space-y-2">
-                <div className="text-sm font-medium">Personal Information</div>
-                <div className="space-y-1">
-                  {["gpa", "year", "program", "faculty"].map((field) => (
-                    <div key={field} className="flex items-center gap-2 text-sm">
-                      {formData[field as keyof typeof formData] ? (
-                        <CheckCircle className="h-4 w-4 text-green-600" />
-                      ) : (
-                        <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />
-                      )}
-                      <span className="capitalize">{field === "gpa" ? "GPA" : field}</span>
+              {requirements?.map((requirement) => {
+                const isEssay = requirement.field_config?.type === "essay";
+                const essayKey = `essay_response_${requirement.id}`;
+                const isCompleted = requirement.type === "file"
+                  ? documents[requirement.field_name]
+                  : isEssay
+                  ? essayResponses[essayKey] && essayResponses[essayKey].trim() !== ""
+                  : formData[requirement.field_name] && formData[requirement.field_name].trim() !== "";
+
+                return (
+                  <div key={requirement.id} className="flex items-center gap-2">
+                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                      isCompleted 
+                        ? "bg-green-500 border-green-500" 
+                        : "border-gray-300"
+                    }`}>
+                      {isCompleted && <CheckCircle className="w-3 h-3 text-white" />}
                     </div>
-                  ))}
-                </div>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-2">
-                <div className="text-sm font-medium">Required Documents</div>
-                <div className="space-y-1">
-                  {award.requirements.documents.map((document) => {
-                    const docKey = document.toLowerCase().replace(/\s+/g, "")
-                    const isUploaded = documents[docKey as keyof typeof documents]
-                    return (
-                      <div key={document} className="flex items-center gap-2 text-sm">
-                        {isUploaded ? (
-                          <CheckCircle className="h-4 w-4 text-green-600" />
-                        ) : (
-                          <div className="h-4 w-4 rounded-full border-2 border-muted-foreground" />
-                        )}
-                        <span>{document}</span>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Help */}
-          <Card className="bg-muted/50">
-            <CardHeader>
-              <CardTitle className="text-base">Need Help?</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <p className="text-sm text-muted-foreground">Having trouble with your application? We're here to help.</p>
-              <div className="space-y-2">
-                <Button variant="outline" size="sm" className="w-full bg-transparent" asChild>
-                  <Link href="/contact">Contact Support</Link>
-                </Button>
-                <Button variant="ghost" size="sm" className="w-full" asChild>
-                  <Link href="/application-guide">Application Guide</Link>
-                </Button>
-              </div>
+                    <span className={`text-sm ${isCompleted ? "text-green-600" : "text-gray-600"}`}>
+                      {requirement.label}
+                    </span>
+                  </div>
+                );
+              })}
             </CardContent>
           </Card>
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      <Dialog open={showConfirmModal} onOpenChange={setShowConfirmModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-orange-500" />
+              Confirm Application Submission
+            </DialogTitle>
+            <DialogDescription className="text-base">
+              Are you sure you want to submit your application? 
+              <br /><br />
+              <strong className="text-orange-600">
+                ⚠️ Important: Once submitted, you will not be able to make any changes to your application.
+              </strong>
+              <br /><br />
+              Please review all your information carefully before confirming.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowConfirmModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleConfirmSubmit}
+              className="bg-orange-600 hover:bg-orange-700"
+            >
+              <CheckCircle className="w-4 h-4 mr-2" />
+              Confirm Submit
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
-  )
+  );
 }
