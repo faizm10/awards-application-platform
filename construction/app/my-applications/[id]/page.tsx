@@ -1,42 +1,139 @@
 "use client"
 
-import { use } from "react"
-import { notFound } from "next/navigation"
+import { useEffect, useState } from "react"
+import { notFound, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { ArrowLeft, FileText, Calendar, User, MessageSquare } from "lucide-react"
+import { ArrowLeft, FileText, Calendar, User, MessageSquare, Loader2, AlertCircle, ExternalLink } from "lucide-react"
 import Link from "next/link"
-import { getApplicationById, getStatusColor, getStatusLabel } from "@/lib/applications"
-import { ROUTES } from "@/constants/routes"
-import { getAwardById } from "@/lib/awards"
-import { getCurrentUser } from "@/lib/auth"
+import { getApplicationById, getStatusColor, getStatusLabel, extractFormDataFromApplication, type Application } from "@/lib/applications"
+import { useAuth } from "@/contexts/AuthContext"
+import { ProtectedRoute } from "@/components/auth/protected-route"
+import { useScrollToTop } from "@/hooks/use-scroll-to-top"
 
 interface ApplicationDetailPageProps {
   params: Promise<{ id: string }>
 }
 
-export default function ApplicationDetailPage({ params }: ApplicationDetailPageProps) {
-  const { id } = use(params)
-  const application = getApplicationById(id)
-  const user = getCurrentUser()
+function ApplicationDetailContent({ params }: ApplicationDetailPageProps) {
+  const router = useRouter()
+  const { user } = useAuth()
+  const [application, setApplication] = useState<Application | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  const [id, setId] = useState<string | null>(null)
+  
+  // Scroll to top when page loads
+  useScrollToTop()
 
-  if (!application || !user || user.role !== "student" || application.studentId !== user.id) {
-    notFound()
+  // Get the application ID from params
+  useEffect(() => {
+    params.then(({ id }) => {
+      setId(id)
+    })
+  }, [params])
+
+  // Fetch application data
+  useEffect(() => {
+    const fetchApplication = async () => {
+      if (!id || !user) return
+
+      setLoading(true)
+      setError(null)
+
+      try {
+        const app = await getApplicationById(id)
+        
+        if (!app) {
+          setError("Application not found")
+          return
+        }
+
+        // Check if the user owns this application
+        if (app.student_id !== user.id) {
+          setError("You don't have permission to view this application")
+          return
+        }
+
+        setApplication(app)
+      } catch (err) {
+        console.error("Error fetching application:", err)
+        setError("Failed to load application. Please try again.")
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchApplication()
+  }, [id, user])
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center py-12">
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-6 w-6 animate-spin" />
+            <span>Loading application...</span>
+          </div>
+        </div>
+      </div>
+    )
   }
 
-  const award = getAwardById(application.awardId)
+  // Show error state
+  if (error || !application) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Card>
+          <CardContent className="pt-6 text-center py-12">
+            <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Error Loading Application</h3>
+            <p className="text-muted-foreground mb-4">{error || "Application not found"}</p>
+            <Button 
+              variant="outline" 
+              onClick={() => router.push("/my-applications")}
+            >
+              Back to My Applications
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
+  const award = application.award as any // Type assertion for award data
   if (!award) {
-    notFound()
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Card>
+          <CardContent className="pt-6 text-center py-12">
+            <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
+            <h3 className="text-lg font-semibold mb-2">Award Not Found</h3>
+            <p className="text-muted-foreground mb-4">The award for this application could not be found.</p>
+            <Button 
+              variant="outline" 
+              onClick={() => router.push("/my-applications")}
+            >
+              Back to My Applications
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
   }
+
+  // Extract form data for display
+  const { formData, documents, essayResponses } = extractFormDataFromApplication(application)
 
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Back Navigation */}
       <div className="mb-6">
         <Button variant="ghost" asChild className="mb-4">
-          <Link href={ROUTES.MY_APPLICATIONS}>
+          <Link href="/my-applications">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to My Applications
           </Link>
@@ -68,120 +165,138 @@ export default function ApplicationDetailPage({ params }: ApplicationDetailPageP
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <span className="font-medium">GPA:</span>
-                  <span className="ml-2">{application.formData.gpa}</span>
-                </div>
-                <div>
-                  <span className="font-medium">Current Year:</span>
-                  <span className="ml-2">Year {application.formData.year}</span>
-                </div>
-                <div>
-                  <span className="font-medium">Program:</span>
-                  <span className="ml-2">{application.formData.program}</span>
-                </div>
-                <div>
-                  <span className="font-medium">Faculty:</span>
-                  <span className="ml-2">{application.formData.faculty}</span>
-                </div>
+                {formData.first_name && (
+                  <div>
+                    <span className="font-medium">First Name:</span>
+                    <span className="ml-2">{formData.first_name}</span>
+                  </div>
+                )}
+                {formData.last_name && (
+                  <div>
+                    <span className="font-medium">Last Name:</span>
+                    <span className="ml-2">{formData.last_name}</span>
+                  </div>
+                )}
+                {formData.student_id_text && (
+                  <div>
+                    <span className="font-medium">Student ID:</span>
+                    <span className="ml-2">{formData.student_id_text}</span>
+                  </div>
+                )}
+                {formData.major_program && (
+                  <div>
+                    <span className="font-medium">Major/Program:</span>
+                    <span className="ml-2">{formData.major_program}</span>
+                  </div>
+                )}
+                {formData.credits_completed && (
+                  <div>
+                    <span className="font-medium">Credits Completed:</span>
+                    <span className="ml-2">{formData.credits_completed}</span>
+                  </div>
+                )}
+                {formData.email && (
+                  <div>
+                    <span className="font-medium">Email:</span>
+                    <span className="ml-2">{formData.email}</span>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
 
-          {/* Personal Statement */}
-          {application.formData.personalStatement && (
+          {/* Text Responses */}
+          {(formData.response_text || formData.travel_description || formData.travel_benefit || formData.budget) && (
             <Card>
               <CardHeader>
-                <CardTitle>Personal Statement</CardTitle>
+                <CardTitle>Application Responses</CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                  {application.formData.personalStatement}
-                </p>
+              <CardContent className="space-y-6">
+                {formData.response_text && (
+                  <div>
+                    <h4 className="font-medium mb-2">Response</h4>
+                    <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                      {formData.response_text}
+                    </p>
+                  </div>
+                )}
+                {formData.travel_description && (
+                  <div>
+                    <h4 className="font-medium mb-2">Travel Description</h4>
+                    <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                      {formData.travel_description}
+                    </p>
+                  </div>
+                )}
+                {formData.travel_benefit && (
+                  <div>
+                    <h4 className="font-medium mb-2">Travel Benefit</h4>
+                    <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                      {formData.travel_benefit}
+                    </p>
+                  </div>
+                )}
+                {formData.budget && (
+                  <div>
+                    <h4 className="font-medium mb-2">Budget Information</h4>
+                    <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                      {formData.budget}
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
 
-          {/* Additional Information */}
-          {application.formData.additionalInfo && (
+          {/* Essay Responses */}
+          {essayResponses && Object.keys(essayResponses).length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>Additional Information</CardTitle>
+                <CardTitle>Essay Responses</CardTitle>
               </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                  {application.formData.additionalInfo}
-                </p>
+              <CardContent className="space-y-6">
+                {Object.entries(essayResponses).map(([key, response]) => (
+                  <div key={key}>
+                    <h4 className="font-medium mb-2">Essay Response</h4>
+                    <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
+                      {response}
+                    </p>
+                  </div>
+                ))}
               </CardContent>
             </Card>
           )}
 
           {/* Submitted Documents */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Submitted Documents
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {Object.entries(application.documents).map(([key, value]) => {
-                  if (!value) return null
-
-                  if (Array.isArray(value)) {
-                    return value.map((doc, index) => (
-                      <div key={`${key}-${index}`} className="flex items-center gap-3 p-3 border rounded-lg">
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                        <div className="flex-1">
-                          <div className="font-medium">
-                            {key} {index + 1}
-                          </div>
-                          <div className="text-sm text-muted-foreground">{doc}</div>
-                        </div>
-                      </div>
-                    ))
-                  }
-
-                  if (typeof value === "object") {
-                    return Object.entries(value).map(([docName, docFile]) => (
-                      <div key={docName} className="flex items-center gap-3 p-3 border rounded-lg">
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                        <div className="flex-1">
-                          <div className="font-medium">{docName}</div>
-                          <div className="text-sm text-muted-foreground">{docFile}</div>
-                        </div>
-                      </div>
-                    ))
-                  }
-
-                  return (
-                    <div key={key} className="flex items-center gap-3 p-3 border rounded-lg">
-                      <FileText className="h-4 w-4 text-muted-foreground" />
-                      <div className="flex-1">
-                        <div className="font-medium capitalize">{key.replace(/([A-Z])/g, " $1").trim()}</div>
-                        <div className="text-sm text-muted-foreground">{value}</div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Reviewer Comments */}
-          {application.reviewerComments && (
+          {Object.keys(documents).length > 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  <MessageSquare className="h-5 w-5" />
-                  Reviewer Comments
+                  <FileText className="h-5 w-5" />
+                  Submitted Documents
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap">
-                  {application.reviewerComments}
-                </p>
+                <div className="space-y-3">
+                  {Object.entries(documents).map(([key, url]) => {
+                    if (!url) return null
+
+                    return (
+                      <div key={key} className="flex items-center gap-3 p-3 border rounded-lg">
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                        <div className="flex-1">
+                          <div className="font-medium capitalize">{key.replace(/([A-Z])/g, " $1").trim()}</div>
+                          <div className="text-sm text-muted-foreground truncate">{url}</div>
+                        </div>
+                        <Button variant="ghost" size="sm" asChild>
+                          <a href={url} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
+                        </Button>
+                      </div>
+                    )
+                  })}
+                </div>
               </CardContent>
             </Card>
           )}
@@ -209,34 +324,32 @@ export default function ApplicationDetailPage({ params }: ApplicationDetailPageP
                   <div>
                     <div className="text-sm font-medium">Created</div>
                     <div className="text-sm text-muted-foreground">
-                      {new Date(application.createdAt).toLocaleDateString()}
+                      {new Date(application.created_at).toLocaleDateString()}
                     </div>
                   </div>
                 </div>
 
-                {application.submittedAt && (
+                {application.submitted_at && (
                   <div className="flex items-center gap-3">
                     <User className="h-4 w-4 text-muted-foreground" />
                     <div>
                       <div className="text-sm font-medium">Submitted</div>
                       <div className="text-sm text-muted-foreground">
-                        {new Date(application.submittedAt).toLocaleDateString()}
+                        {new Date(application.submitted_at).toLocaleDateString()}
                       </div>
                     </div>
                   </div>
                 )}
 
-                {application.reviewedAt && (
-                  <div className="flex items-center gap-3">
-                    <MessageSquare className="h-4 w-4 text-muted-foreground" />
-                    <div>
-                      <div className="text-sm font-medium">Last Reviewed</div>
-                      <div className="text-sm text-muted-foreground">
-                        {new Date(application.reviewedAt).toLocaleDateString()}
-                      </div>
+                <div className="flex items-center gap-3">
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                  <div>
+                    <div className="text-sm font-medium">Last Updated</div>
+                    <div className="text-sm text-muted-foreground">
+                      {new Date(application.updated_at).toLocaleDateString()}
                     </div>
                   </div>
-                )}
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -258,8 +371,8 @@ export default function ApplicationDetailPage({ params }: ApplicationDetailPageP
               </div>
               <Separator />
               <div>
-                <div className="font-medium">{award.faculty}</div>
-                <div className="text-sm text-muted-foreground">Faculty</div>
+                <div className="font-medium">{award.category}</div>
+                <div className="text-sm text-muted-foreground">Category</div>
               </div>
             </CardContent>
           </Card>
@@ -270,14 +383,14 @@ export default function ApplicationDetailPage({ params }: ApplicationDetailPageP
               <div className="space-y-3">
                 {application.status === "draft" && (
                   <Button className="w-full" asChild>
-                    <Link href={ROUTES.AWARD_APPLY(award.id)}>Continue Application</Link>
+                    <Link href={`/awards/${application.award_id}/apply`}>Continue Application</Link>
                   </Button>
                 )}
                 <Button variant="outline" className="w-full bg-transparent" asChild>
-                  <Link href={ROUTES.AWARD_DETAILS(award.id)}>View Award Details</Link>
+                  <Link href={`/awards/${application.award_id}`}>View Award Details</Link>
                 </Button>
                 <Button variant="ghost" className="w-full" asChild>
-                  <Link href={ROUTES.AWARDS}>Browse Other Awards</Link>
+                  <Link href="/awards">Browse Other Awards</Link>
                 </Button>
               </div>
             </CardContent>
@@ -285,5 +398,13 @@ export default function ApplicationDetailPage({ params }: ApplicationDetailPageP
         </div>
       </div>
     </div>
+  )
+}
+
+export default function ApplicationDetailPage(props: ApplicationDetailPageProps) {
+  return (
+    <ProtectedRoute>
+      <ApplicationDetailContent {...props} />
+    </ProtectedRoute>
   )
 }

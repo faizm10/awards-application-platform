@@ -7,8 +7,12 @@ import { Award, Star, ArrowRight, BookOpen } from "lucide-react";
 import Link from "next/link";
 import { ROUTES } from "@/constants/routes";
 import Footer from "@/components/footer";
+import { useScrollToTop } from "@/hooks/use-scroll-to-top";
 
 export default function HomePage() {
+  // Scroll to top when page loads
+  useScrollToTop();
+  
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
       {/* Hero Section */}

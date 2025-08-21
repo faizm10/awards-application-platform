@@ -40,12 +40,17 @@ import { useAuth } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/auth/protected-route";
 import {
   getApplicationByAwardAndStudent,
-  createApplication,
-  updateApplication,
+  saveApplicationDraft,
+  submitApplication,
+  transformFormDataToApplication,
+  extractFormDataFromApplication,
+  validateApplicationForm,
+  getStatusLabel,
   type Application,
 } from "@/lib/applications";
 import { FileUpload } from "@/components/file-upload";
 import { toast } from "sonner";
+import { useScrollToTop } from "@/hooks/use-scroll-to-top";
 
 interface ApplyPageProps {
   params: Promise<{ id: string }>;
@@ -55,6 +60,9 @@ function ApplyPageContent({ params }: ApplyPageProps) {
   const router = useRouter();
   const [id, setId] = useState<string | null>(null);
   const { user } = useAuth();
+  
+  // Scroll to top when page loads
+  useScrollToTop();
 
   const [existingApplication, setExistingApplication] =
     useState<Application | null>(null);
@@ -89,25 +97,32 @@ function ApplyPageContent({ params }: ApplyPageProps) {
 
   // Initialize form data when award and requirements are loaded
   useEffect(() => {
-    if (id && user) {
-      const existingApp = getApplicationByAwardAndStudent(id, user.id);
-      setExistingApplication(existingApp || null);
-      if (existingApp) {
-        setFormData(existingApp.formData || {});
-        setDocuments(existingApp.documents || {});
+    const loadExistingApplication = async () => {
+      if (id && user) {
+        const existingApp = await getApplicationByAwardAndStudent(id, user.id);
+        setExistingApplication(existingApp);
+        
+        if (existingApp) {
+          // Extract form data from the application using helper function
+          const { formData: extractedFormData, documents: extractedDocuments, essayResponses: extractedEssayResponses } = extractFormDataFromApplication(existingApp);
+          
+          setFormData(extractedFormData);
+          setDocuments(extractedDocuments);
+          setEssayResponses(extractedEssayResponses);
 
-        // Handle essay responses if they exist
-        if (existingApp.essayResponses) {
-          setEssayResponses(existingApp.essayResponses);
           // Calculate word counts for essays
-          const counts: Record<string, number> = {};
-          Object.keys(existingApp.essayResponses).forEach((key) => {
-            counts[key] = countWords(existingApp.essayResponses![key] || "");
-          });
-          setWordCounts(counts);
+          if (extractedEssayResponses) {
+            const counts: Record<string, number> = {};
+            Object.keys(extractedEssayResponses).forEach((key) => {
+              counts[key] = countWords(extractedEssayResponses[key] || "");
+            });
+            setWordCounts(counts);
+          }
         }
       }
-    }
+    };
+
+    loadExistingApplication();
   }, [id, user]);
 
   const countWords = (text: string): number => {
@@ -118,7 +133,7 @@ function ApplyPageContent({ params }: ApplyPageProps) {
   };
 
   // Show loading state
-  if (awardLoading || requirementsLoading) {
+  if (awardLoading || requirementsLoading || (id && user && existingApplication === null)) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-center py-12">
@@ -147,6 +162,45 @@ function ApplyPageContent({ params }: ApplyPageProps) {
             <Button variant="outline" asChild>
               <Link href={`/awards/${id}`}>Back to Award Details</Link>
             </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show submitted status if application is already submitted (not draft)
+  if (existingApplication && existingApplication.status !== "draft") {
+    const statusColor = existingApplication.status === "submitted" ? "text-green-600" : "text-blue-600";
+    const statusTitle = existingApplication.status === "submitted" 
+      ? "Application Already Submitted" 
+      : `Application ${getStatusLabel(existingApplication.status)}`;
+    const statusDescription = existingApplication.status === "submitted"
+      ? `You have already submitted your application for ${award.title}. You can view your application details and track its status.`
+      : `Your application for ${award.title} has been ${getStatusLabel(existingApplication.status).toLowerCase()}. You can view your application details and track its progress.`;
+
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Card className="text-center py-12">
+          <CardContent>
+            <CheckCircle className={`h-12 w-12 ${statusColor} mx-auto mb-4`} />
+            <h3 className="text-lg font-semibold mb-2">
+              {statusTitle}
+            </h3>
+            <p className="text-muted-foreground mb-4">
+              {statusDescription}
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button asChild>
+                <Link href={`/my-applications/${existingApplication.id}`}>
+                  View Application
+                </Link>
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href="/my-applications">
+                  My Applications
+                </Link>
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -232,22 +286,27 @@ function ApplyPageContent({ params }: ApplyPageProps) {
   const handleSaveDraft = async () => {
     setIsSaving(true);
     try {
-      const applicationData = {
+      const applicationFormData = transformFormDataToApplication(
         formData,
         documents,
-        essayResponses,
-        status: "draft" as const,
-      };
+        essayResponses
+      );
 
-      if (existingApplication) {
-        updateApplication(existingApplication.id, applicationData);
+      const result = await saveApplicationDraft(
+        id!,
+        user!.id,
+        applicationFormData,
+        existingApplication?.id
+      );
+
+      if (result) {
+        setExistingApplication(result);
+        toast("Draft saved successfully!");
       } else {
-        const newApp = createApplication(id!, user!.id, formData, documents);
-        updateApplication(newApp.id, { essayResponses });
+        toast("Failed to save draft. Please try again.");
       }
-
-      toast("Draft saved successfully!");
     } catch (error) {
+      console.error("Error saving draft:", error);
       toast("Failed to save draft. Please try again.");
     } finally {
       setIsSaving(false);
@@ -295,28 +354,31 @@ function ApplyPageContent({ params }: ApplyPageProps) {
     setIsSubmitting(true);
 
     try {
-      const applicationData = {
+      const applicationFormData = transformFormDataToApplication(
         formData,
         documents,
-        essayResponses,
-        status: "submitted" as const,
-        submittedAt: new Date().toISOString(),
-      };
+        essayResponses
+      );
 
+      let result;
       if (existingApplication) {
-        updateApplication(existingApplication.id, applicationData);
+        result = await submitApplication(existingApplication.id, applicationFormData);
       } else {
-        const newApp = createApplication(id!, user!.id, formData, documents);
-        updateApplication(newApp.id, {
-          essayResponses,
-          status: "submitted",
-          submittedAt: new Date().toISOString(),
-        });
+        // Create new application and submit it
+        const newApp = await saveApplicationDraft(id!, user!.id, applicationFormData);
+        if (newApp) {
+          result = await submitApplication(newApp.id, applicationFormData);
+        }
       }
 
-      toast("Your application has been successfully submitted for review.");
-      router.push("/my-applications");
+      if (result) {
+        toast("Your application has been successfully submitted for review.");
+        router.push("/my-applications");
+      } else {
+        toast("Failed to submit application. Please try again.");
+      }
     } catch (error) {
+      console.error("Error submitting application:", error);
       toast("Failed to submit application. Please try again.");
     } finally {
       setIsSubmitting(false);
@@ -408,9 +470,9 @@ function ApplyPageContent({ params }: ApplyPageProps) {
                 {existingApplication?.status === "draft" && (
                   <Badge
                     variant="outline"
-                    className="bg-gray-100 text-gray-800 border-gray-200"
+                    className="bg-blue-50 text-blue-700 border-blue-200"
                   >
-                    Draft
+                    Draft - Continue Application
                   </Badge>
                 )}
               </div>
@@ -476,9 +538,14 @@ function ApplyPageContent({ params }: ApplyPageProps) {
                             handleDocumentChange(requirement.field_name, url)
                           }
                           currentFile={documents[requirement.field_name]}
-                          accept=".pdf,.doc,.docx"
+                          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                           required={requirement.required}
-                          bucketName="applications" // Add this line
+                          bucketName="applications"
+                          filePath={`${id}/${user?.id}/${requirement.field_name}`}
+                          onError={(error) => {
+                            console.error(`File upload error for ${requirement.field_name}:`, error);
+                            toast(`Failed to upload ${requirement.label}: ${error}`);
+                          }}
                         />
                       ) : requirement.type === "textarea" || isEssay ? (
                         <div className="space-y-2">

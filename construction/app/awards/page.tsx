@@ -9,8 +9,12 @@ import { Badge } from "@/components/ui/badge"
 import { Search, Filter, AwardIcon, SortAsc, SortDesc, Loader2 } from "lucide-react"
 import { AwardCard } from "@/components/award-card"
 import { useAwards, type AwardFilters, type AwardSort } from "@/hooks/use-awards"
+import { useScrollToTop } from "@/hooks/use-scroll-to-top"
 
 export default function AwardsPage() {
+  // Scroll to top when page loads
+  useScrollToTop();
+  
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [selectedStatus, setSelectedStatus] = useState("all")

@@ -350,14 +350,7 @@ export default function AwardDetailPage({ params }: AwardDetailPageProps) {
                 </div>
               </div>
 
-              <Separator />
-
-              <div>
-                <div className="font-medium mb-1">Category</div>
-                <div className="text-sm text-muted-foreground">
-                  {award.category}
-                </div>
-              </div>
+             
             </CardContent>
           </Card>
 

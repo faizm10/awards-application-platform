@@ -6,6 +6,7 @@ import "./globals.css";
 import { Navigation } from "@/components/navigation";
 import Footer from "@/components/footer";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { ScrollToTop } from "@/components/scroll-to-top";
 
 export const metadata: Metadata = {
   title: "Student Awards Portal - University of Guelph",
@@ -32,6 +33,7 @@ html {
       </head>
       <body>
         <AuthProvider>
+          <ScrollToTop />
           <Navigation />
           <main className="min-h-screen bg-background">{children}</main>
         </AuthProvider>

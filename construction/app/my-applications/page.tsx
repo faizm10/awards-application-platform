@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -33,40 +33,58 @@ import {
   DollarSign,
   Eye,
   Edit,
+  Loader2,
+  AlertCircle,
 } from "lucide-react";
 import Link from "next/link";
-import { getCurrentUser } from "@/lib/auth";
+import { useAuth } from "@/contexts/AuthContext";
 import { ROUTES } from "@/constants/routes";
 import {
   getApplicationsByStudent,
   getStatusColor,
   getStatusLabel,
+  type Application,
 } from "@/lib/applications";
-import { getAwardById } from "@/lib/awards";
+import { ProtectedRoute } from "@/components/auth/protected-route";
+import { useScrollToTop } from "@/hooks/use-scroll-to-top";
 
-export default function MyApplicationsPage() {
-  const user = getCurrentUser();
+function MyApplicationsContent() {
+  const { user } = useAuth();
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  
+  // Scroll to top when page loads
+  useScrollToTop();
 
-  if (!user || user.role !== "student") {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <Card>
-          <CardContent className="pt-6 text-center">
-            <p>Please log in as a student to view your applications.</p>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  // Fetch applications when user is available
+  useEffect(() => {
+    const fetchApplications = async () => {
+      if (!user) return;
 
-  const applications = getApplicationsByStudent(user.id);
+      setLoading(true);
+      setError(null);
 
+      try {
+        const apps = await getApplicationsByStudent(user.id);
+        setApplications(apps);
+      } catch (err) {
+        console.error("Error fetching applications:", err);
+        setError("Failed to load applications. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchApplications();
+  }, [user]);
+
+  // Filter applications based on search and status
   const filteredApplications = applications.filter((app) => {
-    const award = getAwardById(app.awardId);
-    const matchesSearch =
-      award?.title.toLowerCase().includes(searchTerm.toLowerCase()) || false;
+    const award = app.award as any; // Type assertion for award data
+    const matchesSearch = award?.title?.toLowerCase().includes(searchTerm.toLowerCase()) || false;
     const matchesStatus = statusFilter === "all" || app.status === statusFilter;
 
     return matchesSearch && matchesStatus;
@@ -80,166 +98,178 @@ export default function MyApplicationsPage() {
     const underReview = applications.filter(
       (app) => app.status === "under_review"
     ).length;
-    const awarded = applications.filter(
-      (app) => app.status === "awarded"
+    const approved = applications.filter(
+      (app) => app.status === "approved"
     ).length;
 
-    return { total, submitted, underReview, awarded };
+    return { total, submitted, underReview, approved };
   };
 
   const stats = getApplicationStats();
 
-  return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-4">My Applications</h1>
-        <p className="text-muted-foreground">
-          Track and manage your award applications
-        </p>
-      </div>
-
-      {/* Filters */}
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle>Filter Applications</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by award title..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-[200px]">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="draft">Draft</SelectItem>
-                <SelectItem value="submitted">Submitted</SelectItem>
-                <SelectItem value="under_review">Under Review</SelectItem>
-                <SelectItem value="shortlisted">Shortlisted</SelectItem>
-                <SelectItem value="rejected">Not Selected</SelectItem>
-                <SelectItem value="awarded">Awarded</SelectItem>
-              </SelectContent>
-            </Select>
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-6 max-w-6xl">
+        <div className="flex items-center justify-center py-8">
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span className="text-sm">Loading applications...</span>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+    );
+  }
 
-      {/* Applications Table */}
-      {filteredApplications.length > 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Applications ({filteredApplications.length})</CardTitle>
-            <CardDescription>
-              Your award applications and their current status
-            </CardDescription>
-          </CardHeader>
+  // Show error state
+  if (error) {
+    return (
+      <div className="container mx-auto px-4 py-6 max-w-6xl">
+        <Card className="text-center py-6">
           <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Award</TableHead>
-                    <TableHead>Value</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Submitted</TableHead>
-                    <TableHead>Last Updated</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredApplications.map((application) => {
-                    const award = getAwardById(application.awardId);
-                    if (!award) return null;
-
-                    return (
-                      <TableRow key={application.id}>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">{award.title}</div>
-                            <div className="text-sm text-muted-foreground">
-                              {award.faculty}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-semibold text-primary">
-                            {award.value}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant="outline"
-                            className={getStatusColor(application.status)}
-                          >
-                            {getStatusLabel(application.status)}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {application.submittedAt
-                            ? new Date(
-                                application.submittedAt
-                              ).toLocaleDateString()
-                            : "Not submitted"}
-                        </TableCell>
-                        <TableCell>
-                          {new Date(application.updatedAt).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button variant="ghost" size="sm" asChild>
-                              <Link
-                                href={ROUTES.APPLICATION_DETAILS(
-                                  application.id
-                                )}
-                              >
-                                <Eye className="h-4 w-4" />
-                              </Link>
-                            </Button>
-                            {application.status === "draft" && (
-                              <Button variant="ghost" size="sm" asChild>
-                                <Link href={ROUTES.AWARD_APPLY(award.id)}>
-                                  <Edit className="h-4 w-4" />
-                                </Link>
-                              </Button>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+            <AlertCircle className="h-8 w-8 text-destructive mx-auto mb-3" />
+            <h3 className="text-lg font-semibold mb-2">Error Loading Applications</h3>
+            <p className="text-sm text-muted-foreground mb-4">{error}</p>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => window.location.reload()}
+            >
+              Try Again
+            </Button>
           </CardContent>
         </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-6 max-w-6xl">
+      {/* Compact Header with Stats */}
+      <div className="mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-4">
+          <div>
+            <h1 className="text-2xl font-bold">My Applications</h1>
+            <p className="text-sm text-muted-foreground">
+              Track and manage your award applications
+            </p>
+          </div>
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-muted-foreground">Total:</span>
+            <Badge variant="outline" className="font-semibold">{stats.total}</Badge>
+            <span className="text-muted-foreground">•</span>
+            <span className="text-blue-600 font-medium">{stats.submitted} submitted</span>
+            <span className="text-muted-foreground">•</span>
+            <span className="text-yellow-600 font-medium">{stats.underReview} reviewing</span>
+            <span className="text-muted-foreground">•</span>
+            <span className="text-green-600 font-medium">{stats.approved} approved</span>
+          </div>
+        </div>
+
+        {/* Compact Filters */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search awards..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 h-9"
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-full sm:w-[180px] h-9">
+              <SelectValue placeholder="All status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="draft">Draft</SelectItem>
+              <SelectItem value="submitted">Submitted</SelectItem>
+              <SelectItem value="under_review">Under Review</SelectItem>
+              <SelectItem value="reviewed">Reviewed</SelectItem>
+              <SelectItem value="approved">Approved</SelectItem>
+              <SelectItem value="rejected">Not Selected</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Compact Applications List */}
+      {filteredApplications.length > 0 ? (
+        <div className="space-y-3">
+          {filteredApplications.map((application) => {
+            const award = application.award as any; // Type assertion for award data
+            if (!award) return null;
+
+            return (
+              <Card key={application.id} className="hover:shadow-md transition-shadow">
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-3 mb-2">
+                        <h3 className="font-semibold text-lg truncate">{award.title}</h3>
+                        <Badge
+                          variant="outline"
+                          className={`${getStatusColor(application.status)} text-xs`}
+                        >
+                          {getStatusLabel(application.status)}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <span className="font-medium text-primary">{award.value}</span>
+                        <span>•</span>
+                        <span>{award.category}</span>
+                        <span>•</span>
+                        <span>
+                          {application.submitted_at
+                            ? `Submitted ${new Date(application.submitted_at).toLocaleDateString()}`
+                            : `Updated ${new Date(application.updated_at).toLocaleDateString()}`
+                          }
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 ml-4">
+                      <Button variant="ghost" size="sm" asChild>
+                        <Link href={`/my-applications/${application.id}`}>
+                          <Eye className="h-4 w-4" />
+                          <span className="sr-only">View</span>
+                        </Link>
+                      </Button>
+                      {application.status === "draft" && (
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link href={`/awards/${application.award_id}/apply`}>
+                            <Edit className="h-4 w-4" />
+                            <span className="sr-only">Edit</span>
+                          </Link>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
       ) : (
-        <Card>
-          <CardContent className="pt-6 text-center py-12">
-            <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+        <Card className="text-center py-8">
+          <CardContent>
+            <FileText className="h-8 w-8 text-muted-foreground mx-auto mb-3" />
             <h3 className="text-lg font-semibold mb-2">
               No applications found
             </h3>
-            <p className="text-muted-foreground mb-4">
+            <p className="text-sm text-muted-foreground mb-4">
               {applications.length === 0
                 ? "You haven't applied for any awards yet."
                 : "No applications match your current filters."}
             </p>
             {applications.length === 0 ? (
-              <Button asChild>
-                <Link href={ROUTES.AWARDS}>Browse Awards</Link>
+              <Button size="sm" asChild>
+                <Link href="/awards">Browse Awards</Link>
               </Button>
             ) : (
               <Button
                 variant="outline"
+                size="sm"
                 onClick={() => {
                   setSearchTerm("");
                   setStatusFilter("all");
@@ -252,5 +282,13 @@ export default function MyApplicationsPage() {
         </Card>
       )}
     </div>
+  );
+}
+
+export default function MyApplicationsPage() {
+  return (
+    <ProtectedRoute>
+      <MyApplicationsContent />
+    </ProtectedRoute>
   );
 }
