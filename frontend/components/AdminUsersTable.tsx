@@ -10,7 +10,7 @@ import {
   TableCell,
 } from "@/components/ui/table";
 import type { Profile } from "@/types/awards";
-import { User } from "lucide-react";
+import { User, Plus, Mail, Lock } from "lucide-react";
 import {
   Select,
   SelectTrigger,
@@ -19,16 +19,29 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Button } from "@/components/ui/button"; // Added Button import
-import { Tabs } from "@/components/ui/tabs"; // Added Tabs and Tab imports
+import { Button } from "@/components/ui/button";
+import { Tabs } from "@/components/ui/tabs";
 import * as Dialog from "@radix-ui/react-dialog";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 
 const AdminUsersTable = () => {
   const [users, setUsers] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   const [activeRole, setActiveRole] = useState<"admin" | "reviewer">("admin");
+
+  // Create user modal state
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    email: "",
+    password: "",
+    full_name: "",
+    user_type: "reviewer" as "admin" | "reviewer",
+    committee: "",
+  });
+  const [creating, setCreating] = useState(false);
 
   const handleRoleChange = async (id: string, newRole: string) => {
     setUpdatingId(id);
@@ -163,13 +176,97 @@ const AdminUsersTable = () => {
     setRemoving(false);
   };
 
+  // Create user function
+  const handleCreateUser = async () => {
+    // Client-side validation
+    if (!createForm.email || !createForm.password || !createForm.full_name) {
+      toast("Please fill in all required fields");
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(createForm.email)) {
+      toast("Please enter a valid email address");
+      return;
+    }
+
+    // Validate password strength
+    if (createForm.password.length < 8) {
+      toast("Password must be at least 8 characters long");
+      return;
+    }
+
+    // Validate committee for reviewers
+    if (createForm.user_type === "reviewer" && (!createForm.committee || createForm.committee.trim() === "")) {
+      toast("Committee name is required for committee members");
+      return;
+    }
+
+    setCreating(true);
+
+    try {
+      const response = await fetch("/api/create-user", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: createForm.email,
+          password: createForm.password,
+          metadata: {
+            full_name: createForm.full_name,
+            user_type: createForm.user_type,
+            committee: createForm.user_type === "reviewer" ? createForm.committee : null,
+          },
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to create user");
+      }
+
+      // Add the new user to the local state using the API response
+      setUsers((prev) => [data.user, ...prev]);
+      
+      // Reset form and close modal
+      setCreateForm({
+        email: "",
+        password: "",
+        full_name: "",
+        user_type: "reviewer",
+        committee: "",
+      });
+      setCreateModalOpen(false);
+      
+      toast.success(data.message || "User created successfully!");
+    } catch (error) {
+      console.error("Error creating user:", error);
+      toast.error(`Failed to create user: ${error instanceof Error ? error.message : "Unknown error"}`);
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleCreateFormChange = (field: string, value: string) => {
+    setCreateForm((prev) => ({ ...prev, [field]: value }));
+  };
+
   const filteredUsers = users.filter((u) => u.user_type === activeRole);
 
   return (
     <div className="card-modern p-6">
-      <h3 className="text-xl font-bold mb-4 text-foreground">
-        {activeRole === "admin" ? "Admin Users" : "Committee Members"}
-      </h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-xl font-bold text-foreground">
+          {activeRole === "admin" ? "Admin Users" : "Committee Members"}
+        </h3>
+        <Button onClick={() => setCreateModalOpen(true)} className="flex items-center gap-2">
+          <Plus className="w-4 h-4" />
+          Create User
+        </Button>
+      </div>
       <div className="mb-4 flex gap-2">
         <Button
           variant={activeRole === "admin" ? "default" : "outline"}
@@ -242,6 +339,113 @@ const AdminUsersTable = () => {
           </TableBody>
         </Table>
       </div>
+
+      {/* Create User Modal */}
+      <Dialog.Root open={createModalOpen} onOpenChange={setCreateModalOpen}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
+          <Dialog.Content className="fixed left-1/2 top-1/2 z-50 w-full max-w-lg -translate-x-1/2 -translate-y-1/2 rounded-lg bg-background p-8 shadow-lg focus:outline-none">
+            <Dialog.Title className="text-xl font-bold mb-4">Create a new user</Dialog.Title>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="create-email" className="flex items-center gap-2">
+                  <Mail className="w-4 h-4" />
+                  Email address
+                </Label>
+                <Input
+                  id="create-email"
+                  type="email"
+                  value={createForm.email}
+                  onChange={(e) => handleCreateFormChange("email", e.target.value)}
+                  placeholder="user@example.com"
+                  disabled={creating}
+                />
+              </div>
+              <div>
+                <Label htmlFor="create-password" className="flex items-center gap-2">
+                  <Lock className="w-4 h-4" />
+                  User Password
+                </Label>
+                <Input
+                  id="create-password"
+                  type="password"
+                  value={createForm.password}
+                  onChange={(e) => handleCreateFormChange("password", e.target.value)}
+                  placeholder="Enter password (min 8 characters)"
+                  disabled={creating}
+                />
+                {createForm.password && (
+                  <div className="text-xs mt-1">
+                    <span className={createForm.password.length >= 8 ? "text-green-600" : "text-red-600"}>
+                      {createForm.password.length >= 8 ? "✓" : "✗"} Password strength: {createForm.password.length >= 8 ? "Good" : "Too short"}
+                    </span>
+                  </div>
+                )}
+              </div>
+              <div>
+                <Label htmlFor="create-full-name">Full Name</Label>
+                <Input
+                  id="create-full-name"
+                  value={createForm.full_name}
+                  onChange={(e) => handleCreateFormChange("full_name", e.target.value)}
+                  placeholder="Enter full name"
+                  disabled={creating}
+                />
+              </div>
+              <div>
+                <Label htmlFor="create-user-type">User Type</Label>
+                <Select
+                  value={createForm.user_type}
+                  onValueChange={(value) => handleCreateFormChange("user_type", value as "admin" | "reviewer")}
+                  disabled={creating}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="reviewer">Committee Member</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              {createForm.user_type === "reviewer" && (
+                <div>
+                  <Label htmlFor="create-committee">Committee *</Label>
+                  <Input
+                    id="create-committee"
+                    value={createForm.committee}
+                    onChange={(e) => handleCreateFormChange("committee", e.target.value)}
+                    placeholder="Enter committee name"
+                    disabled={creating}
+                  />
+                  <div className="text-xs text-muted-foreground mt-1">
+                    Committee name is required for committee members
+                  </div>
+                </div>
+              )}
+              <div className="bg-blue-50 dark:bg-blue-950/20 p-3 rounded-lg">
+                <p className="text-sm text-blue-700 dark:text-blue-300">
+                  <strong>Note:</strong> Users will be auto-confirmed and can log in immediately without email verification.
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 mt-6">
+              <Button variant="outline" onClick={() => setCreateModalOpen(false)} disabled={creating}>
+                Cancel
+              </Button>
+              <Button onClick={handleCreateUser} disabled={creating} className="bg-green-600 hover:bg-green-700">
+                {creating ? "Creating..." : "Create user"}
+              </Button>
+            </div>
+            <Dialog.Close asChild>
+              <button className="absolute top-4 right-4 text-gray-500 hover:text-gray-900" aria-label="Close">
+                <span aria-hidden>×</span>
+              </button>
+            </Dialog.Close>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
       {/* Edit Modal */}
       <Dialog.Root open={modalOpen} onOpenChange={setModalOpen}>
         <Dialog.Portal>
