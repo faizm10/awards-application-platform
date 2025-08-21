@@ -24,7 +24,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ArrowLeft, Save, Send, AlertCircle, CheckCircle, FileText, Upload } from "lucide-react";
+import {
+  ArrowLeft,
+  Save,
+  Send,
+  AlertCircle,
+  CheckCircle,
+  FileText,
+  Upload,
+} from "lucide-react";
 import Link from "next/link";
 import { useAward } from "@/hooks/use-award";
 import { useAwardRequirements } from "@/hooks/use-award-requirements";
@@ -52,7 +60,9 @@ function ApplyPageContent({ params }: ApplyPageProps) {
     useState<Application | null>(null);
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [documents, setDocuments] = useState<Record<string, string>>({});
-  const [essayResponses, setEssayResponses] = useState<Record<string, string>>({});
+  const [essayResponses, setEssayResponses] = useState<Record<string, string>>(
+    {}
+  );
   const [wordCounts, setWordCounts] = useState<Record<string, number>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -85,7 +95,7 @@ function ApplyPageContent({ params }: ApplyPageProps) {
       if (existingApp) {
         setFormData(existingApp.formData || {});
         setDocuments(existingApp.documents || {});
-        
+
         // Handle essay responses if they exist
         if (existingApp.essayResponses) {
           setEssayResponses(existingApp.essayResponses);
@@ -144,8 +154,10 @@ function ApplyPageContent({ params }: ApplyPageProps) {
   }
 
   const handleInputChange = (fieldName: string, value: string) => {
-    const requirement = requirements?.find(req => req.field_name === fieldName);
-    
+    const requirement = requirements?.find(
+      (req) => req.field_name === fieldName
+    );
+
     if (requirement?.field_config?.type === "essay") {
       // Handle essay responses separately
       const essayKey = `essay_response_${requirement.id}`;
@@ -178,9 +190,13 @@ function ApplyPageContent({ params }: ApplyPageProps) {
         return documents[req.field_name];
       } else if (req.field_config?.type === "essay") {
         const essayKey = `essay_response_${req.id}`;
-        return essayResponses[essayKey] && essayResponses[essayKey].trim() !== "";
+        return (
+          essayResponses[essayKey] && essayResponses[essayKey].trim() !== ""
+        );
       } else {
-        return formData[req.field_name] && formData[req.field_name].trim() !== "";
+        return (
+          formData[req.field_name] && formData[req.field_name].trim() !== ""
+        );
       }
     });
 
@@ -198,7 +214,7 @@ function ApplyPageContent({ params }: ApplyPageProps) {
         const essayKey = `essay_response_${req.id}`;
         const response = essayResponses[essayKey];
         if (!response || response.trim() === "") return false;
-        
+
         // Check word limit if specified
         if (req.field_config.word_limit) {
           const wordCount = wordCounts[essayKey] || 0;
@@ -206,7 +222,9 @@ function ApplyPageContent({ params }: ApplyPageProps) {
         }
         return true;
       } else {
-        return formData[req.field_name] && formData[req.field_name].trim() !== "";
+        return (
+          formData[req.field_name] && formData[req.field_name].trim() !== ""
+        );
       }
     });
   };
@@ -247,14 +265,16 @@ function ApplyPageContent({ params }: ApplyPageProps) {
           const essayKey = `essay_response_${req.id}`;
           const response = essayResponses[essayKey];
           if (!response || response.trim() === "") return true;
-          
+
           if (req.field_config.word_limit) {
             const wordCount = wordCounts[essayKey] || 0;
             return wordCount > req.field_config.word_limit;
           }
           return false;
         } else {
-          return !formData[req.field_name] || formData[req.field_name].trim() === "";
+          return (
+            !formData[req.field_name] || formData[req.field_name].trim() === ""
+          );
         }
       });
 
@@ -265,7 +285,9 @@ function ApplyPageContent({ params }: ApplyPageProps) {
             .join(", ")}`
         );
       } else {
-        toast("Please fill in all required fields and upload all required documents.");
+        toast(
+          "Please fill in all required fields and upload all required documents."
+        );
       }
       return;
     }
@@ -285,8 +307,8 @@ function ApplyPageContent({ params }: ApplyPageProps) {
         updateApplication(existingApplication.id, applicationData);
       } else {
         const newApp = createApplication(id!, user!.id, formData, documents);
-        updateApplication(newApp.id, { 
-          essayResponses, 
+        updateApplication(newApp.id, {
+          essayResponses,
           status: "submitted",
           submittedAt: new Date().toISOString(),
         });
@@ -312,14 +334,16 @@ function ApplyPageContent({ params }: ApplyPageProps) {
           const essayKey = `essay_response_${req.id}`;
           const response = essayResponses[essayKey];
           if (!response || response.trim() === "") return true;
-          
+
           if (req.field_config.word_limit) {
             const wordCount = wordCounts[essayKey] || 0;
             return wordCount > req.field_config.word_limit;
           }
           return false;
         } else {
-          return !formData[req.field_name] || formData[req.field_name].trim() === "";
+          return (
+            !formData[req.field_name] || formData[req.field_name].trim() === ""
+          );
         }
       });
 
@@ -330,7 +354,9 @@ function ApplyPageContent({ params }: ApplyPageProps) {
             .join(", ")}`
         );
       } else {
-        toast("Please fill in all required fields and upload all required documents.");
+        toast(
+          "Please fill in all required fields and upload all required documents."
+        );
       }
       return;
     }
@@ -414,7 +440,10 @@ function ApplyPageContent({ params }: ApplyPageProps) {
 
                   return (
                     <div key={requirement.id} className="space-y-2">
-                      <Label htmlFor={requirement.field_name} className="flex items-center gap-2">
+                      <Label
+                        htmlFor={requirement.field_name}
+                        className="flex items-center gap-2"
+                      >
                         {requirement.type === "file" ? (
                           <Upload className="w-4 h-4" />
                         ) : (
@@ -449,6 +478,7 @@ function ApplyPageContent({ params }: ApplyPageProps) {
                           currentFile={documents[requirement.field_name]}
                           accept=".pdf,.doc,.docx"
                           required={requirement.required}
+                          bucketName="applications" // Add this line
                         />
                       ) : requirement.type === "textarea" || isEssay ? (
                         <div className="space-y-2">
@@ -461,7 +491,10 @@ function ApplyPageContent({ params }: ApplyPageProps) {
                             }
                             value={value}
                             onChange={(e) =>
-                              handleInputChange(requirement.field_name, e.target.value)
+                              handleInputChange(
+                                requirement.field_name,
+                                e.target.value
+                              )
                             }
                             rows={isEssay ? 8 : 4}
                             className={isOverLimit ? "border-red-500" : ""}
@@ -471,7 +504,9 @@ function ApplyPageContent({ params }: ApplyPageProps) {
                             <div className="flex justify-between items-center text-sm">
                               <span
                                 className={`${
-                                  isOverLimit ? "text-red-500" : "text-muted-foreground"
+                                  isOverLimit
+                                    ? "text-red-500"
+                                    : "text-muted-foreground"
                                 }`}
                               >
                                 Word count: {wordCount}
@@ -497,7 +532,10 @@ function ApplyPageContent({ params }: ApplyPageProps) {
                           }
                           value={value}
                           onChange={(e) =>
-                            handleInputChange(requirement.field_name, e.target.value)
+                            handleInputChange(
+                              requirement.field_name,
+                              e.target.value
+                            )
                           }
                         />
                       )}
@@ -513,9 +551,12 @@ function ApplyPageContent({ params }: ApplyPageProps) {
             <Card>
               <CardContent className="text-center py-8">
                 <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No Specific Requirements</h3>
+                <h3 className="text-lg font-semibold mb-2">
+                  No Specific Requirements
+                </h3>
                 <p className="text-muted-foreground">
-                  This award doesn't have specific application requirements. You can proceed with the submission.
+                  This award doesn't have specific application requirements. You
+                  can proceed with the submission.
                 </p>
               </CardContent>
             </Card>
@@ -525,19 +566,19 @@ function ApplyPageContent({ params }: ApplyPageProps) {
           <Card>
             <CardContent className="pt-6">
               <div className="flex flex-col sm:flex-row gap-4">
-                <Button 
-                  variant="outline" 
-                  onClick={handleSaveDraft} 
+                <Button
+                  variant="outline"
+                  onClick={handleSaveDraft}
                   disabled={isSaving}
                   className="flex-1 bg-transparent"
                 >
                   <Save className="h-4 w-4 mr-2" />
                   {isSaving ? "Saving..." : "Save Draft"}
                 </Button>
-                <Button 
-                  onClick={handleSubmitClick} 
-                  disabled={!isFormValid() || isSubmitting} 
-                  className="flex-1" 
+                <Button
+                  onClick={handleSubmitClick}
+                  disabled={!isFormValid() || isSubmitting}
+                  className="flex-1"
                   size="lg"
                 >
                   <Send className="h-4 w-4 mr-2" />
@@ -547,7 +588,8 @@ function ApplyPageContent({ params }: ApplyPageProps) {
               {!isFormValid() && (
                 <div className="flex items-center gap-2 mt-4 text-sm text-muted-foreground">
                   <AlertCircle className="h-4 w-4" />
-                  Please complete all required fields and upload all documents before submitting.
+                  Please complete all required fields and upload all documents
+                  before submitting.
                 </div>
               )}
             </CardContent>
@@ -563,13 +605,19 @@ function ApplyPageContent({ params }: ApplyPageProps) {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <div className="font-semibold text-primary text-lg">{award.value}</div>
+                <div className="font-semibold text-primary text-lg">
+                  {award.value}
+                </div>
                 <div className="text-sm text-muted-foreground">Award Value</div>
               </div>
               <Separator />
               <div>
-                <div className="font-medium">{new Date(award.deadline).toLocaleDateString()}</div>
-                <div className="text-sm text-muted-foreground">Application Deadline</div>
+                <div className="font-medium">
+                  {new Date(award.deadline).toLocaleDateString()}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Application Deadline
+                </div>
               </div>
               <Separator />
               <div>
@@ -588,22 +636,33 @@ function ApplyPageContent({ params }: ApplyPageProps) {
               {requirements?.map((requirement) => {
                 const isEssay = requirement.field_config?.type === "essay";
                 const essayKey = `essay_response_${requirement.id}`;
-                const isCompleted = requirement.type === "file"
-                  ? documents[requirement.field_name]
-                  : isEssay
-                  ? essayResponses[essayKey] && essayResponses[essayKey].trim() !== ""
-                  : formData[requirement.field_name] && formData[requirement.field_name].trim() !== "";
+                const isCompleted =
+                  requirement.type === "file"
+                    ? documents[requirement.field_name]
+                    : isEssay
+                    ? essayResponses[essayKey] &&
+                      essayResponses[essayKey].trim() !== ""
+                    : formData[requirement.field_name] &&
+                      formData[requirement.field_name].trim() !== "";
 
                 return (
                   <div key={requirement.id} className="flex items-center gap-2">
-                    <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                      isCompleted 
-                        ? "bg-green-500 border-green-500" 
-                        : "border-gray-300"
-                    }`}>
-                      {isCompleted && <CheckCircle className="w-3 h-3 text-white" />}
+                    <div
+                      className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
+                        isCompleted
+                          ? "bg-green-500 border-green-500"
+                          : "border-gray-300"
+                      }`}
+                    >
+                      {isCompleted && (
+                        <CheckCircle className="w-3 h-3 text-white" />
+                      )}
                     </div>
-                    <span className={`text-sm ${isCompleted ? "text-green-600" : "text-gray-600"}`}>
+                    <span
+                      className={`text-sm ${
+                        isCompleted ? "text-green-600" : "text-gray-600"
+                      }`}
+                    >
                       {requirement.label}
                     </span>
                   </div>
@@ -623,12 +682,15 @@ function ApplyPageContent({ params }: ApplyPageProps) {
               Confirm Application Submission
             </DialogTitle>
             <DialogDescription className="text-base">
-              Are you sure you want to submit your application? 
-              <br /><br />
+              Are you sure you want to submit your application?
+              <br />
+              <br />
               <strong className="text-orange-600">
-                ⚠️ Important: Once submitted, you will not be able to make any changes to your application.
+                ⚠️ Important: Once submitted, you will not be able to make any
+                changes to your application.
               </strong>
-              <br /><br />
+              <br />
+              <br />
               Please review all your information carefully before confirming.
             </DialogDescription>
           </DialogHeader>
