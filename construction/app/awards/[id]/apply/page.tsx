@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { notFound, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
@@ -66,6 +66,7 @@ function ApplyPageContent({ params }: ApplyPageProps) {
 
   const [existingApplication, setExistingApplication] =
     useState<Application | null>(null);
+  const [applicationLoading, setApplicationLoading] = useState(false);
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [documents, setDocuments] = useState<Record<string, string>>({});
   const [essayResponses, setEssayResponses] = useState<Record<string, string>>(
@@ -75,6 +76,14 @@ function ApplyPageContent({ params }: ApplyPageProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
+
+  // Define countWords callback at the top since it doesn't depend on other hooks
+  const countWords = useCallback((text: string): number => {
+    return text
+      .trim()
+      .split(/\s+/)
+      .filter((word) => word.length > 0).length;
+  }, []);
 
   // Get the award ID from params
   useEffect(() => {
@@ -95,45 +104,122 @@ function ApplyPageContent({ params }: ApplyPageProps) {
     error: requirementsError,
   } = useAwardRequirements(id || "");
 
+  // Define callback functions that depend on requirements and other state
+  const handleInputChange = useCallback((fieldName: string, value: string) => {
+    const requirement = requirements?.find(
+      (req) => req.field_name === fieldName
+    );
+
+    if (requirement?.field_config?.type === "essay") {
+      // Handle essay responses separately
+      const essayKey = `essay_response_${requirement.id}`;
+      setEssayResponses((prev) => ({
+        ...prev,
+        [essayKey]: value,
+      }));
+
+      // Update word count
+      setWordCounts((prev) => ({
+        ...prev,
+        [essayKey]: countWords(value),
+      }));
+    } else {
+      // Handle regular form fields
+      setFormData((prev) => ({ ...prev, [fieldName]: value }));
+    }
+  }, [requirements, countWords]);
+
+  const handleDocumentChange = useCallback((fieldName: string, url: string) => {
+    setDocuments((prev) => ({ ...prev, [fieldName]: url }));
+  }, []);
+
+  const calculateProgress = useCallback(() => {
+    if (!requirements || requirements.length === 0) return 100;
+
+    const requiredFields = requirements.filter((req) => req.required);
+    const filledFields = requiredFields.filter((req) => {
+      if (req.type === "file") {
+        return documents[req.field_name];
+      } else if (req.field_config?.type === "essay") {
+        const essayKey = `essay_response_${req.id}`;
+        return (
+          essayResponses[essayKey] && essayResponses[essayKey].trim() !== ""
+        );
+      } else {
+        return (
+          formData[req.field_name] && formData[req.field_name].trim() !== ""
+        );
+      }
+    });
+
+    return Math.round((filledFields.length / requiredFields.length) * 100);
+  }, [requirements, documents, essayResponses, formData]);
+
+  const isFormValid = useCallback(() => {
+    if (!requirements || requirements.length === 0) return true;
+
+    const requiredFields = requirements.filter((req) => req.required);
+    return requiredFields.every((req) => {
+      if (req.type === "file") {
+        return documents[req.field_name];
+      } else if (req.field_config?.type === "essay") {
+        const essayKey = `essay_response_${req.id}`;
+        const response = essayResponses[essayKey];
+        if (!response || response.trim() === "") return false;
+
+        // Check word limit if specified
+        if (req.field_config.word_limit) {
+          const wordCount = wordCounts[essayKey] || 0;
+          return wordCount <= req.field_config.word_limit;
+        }
+        return true;
+      } else {
+        return (
+          formData[req.field_name] && formData[req.field_name].trim() !== ""
+        );
+      }
+    });
+  }, [requirements, documents, essayResponses, wordCounts, formData]);
+
   // Initialize form data when award and requirements are loaded
   useEffect(() => {
     const loadExistingApplication = async () => {
       if (id && user) {
-        const existingApp = await getApplicationByAwardAndStudent(id, user.id);
-        setExistingApplication(existingApp);
-        
-        if (existingApp) {
-          // Extract form data from the application using helper function
-          const { formData: extractedFormData, documents: extractedDocuments, essayResponses: extractedEssayResponses } = extractFormDataFromApplication(existingApp);
+        setApplicationLoading(true);
+        try {
+          const existingApp = await getApplicationByAwardAndStudent(id, user.id);
+          setExistingApplication(existingApp);
           
-          setFormData(extractedFormData);
-          setDocuments(extractedDocuments);
-          setEssayResponses(extractedEssayResponses);
+          if (existingApp) {
+            // Extract form data from the application using helper function
+            const { formData: extractedFormData, documents: extractedDocuments, essayResponses: extractedEssayResponses } = extractFormDataFromApplication(existingApp);
+            
+            setFormData(extractedFormData);
+            setDocuments(extractedDocuments);
+            setEssayResponses(extractedEssayResponses);
 
-          // Calculate word counts for essays
-          if (extractedEssayResponses) {
-            const counts: Record<string, number> = {};
-            Object.keys(extractedEssayResponses).forEach((key) => {
-              counts[key] = countWords(extractedEssayResponses[key] || "");
-            });
-            setWordCounts(counts);
+            // Calculate word counts for essays
+            if (extractedEssayResponses) {
+              const counts: Record<string, number> = {};
+              Object.keys(extractedEssayResponses).forEach((key) => {
+                counts[key] = countWords(extractedEssayResponses[key] || "");
+              });
+              setWordCounts(counts);
+            }
           }
+        } catch (error) {
+          console.error("Error loading existing application:", error);
+        } finally {
+          setApplicationLoading(false);
         }
       }
     };
 
     loadExistingApplication();
-  }, [id, user]);
-
-  const countWords = (text: string): number => {
-    return text
-      .trim()
-      .split(/\s+/)
-      .filter((word) => word.length > 0).length;
-  };
+  }, [id, user, countWords]);
 
   // Show loading state
-  if (awardLoading || requirementsLoading || (id && user && existingApplication === null)) {
+  if (awardLoading || requirementsLoading || applicationLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-center py-12">
@@ -206,82 +292,6 @@ function ApplyPageContent({ params }: ApplyPageProps) {
       </div>
     );
   }
-
-  const handleInputChange = (fieldName: string, value: string) => {
-    const requirement = requirements?.find(
-      (req) => req.field_name === fieldName
-    );
-
-    if (requirement?.field_config?.type === "essay") {
-      // Handle essay responses separately
-      const essayKey = `essay_response_${requirement.id}`;
-      setEssayResponses((prev) => ({
-        ...prev,
-        [essayKey]: value,
-      }));
-
-      // Update word count
-      setWordCounts((prev) => ({
-        ...prev,
-        [essayKey]: countWords(value),
-      }));
-    } else {
-      // Handle regular form fields
-      setFormData((prev) => ({ ...prev, [fieldName]: value }));
-    }
-  };
-
-  const handleDocumentChange = (fieldName: string, url: string) => {
-    setDocuments((prev) => ({ ...prev, [fieldName]: url }));
-  };
-
-  const calculateProgress = () => {
-    if (!requirements || requirements.length === 0) return 100;
-
-    const requiredFields = requirements.filter((req) => req.required);
-    const filledFields = requiredFields.filter((req) => {
-      if (req.type === "file") {
-        return documents[req.field_name];
-      } else if (req.field_config?.type === "essay") {
-        const essayKey = `essay_response_${req.id}`;
-        return (
-          essayResponses[essayKey] && essayResponses[essayKey].trim() !== ""
-        );
-      } else {
-        return (
-          formData[req.field_name] && formData[req.field_name].trim() !== ""
-        );
-      }
-    });
-
-    return Math.round((filledFields.length / requiredFields.length) * 100);
-  };
-
-  const isFormValid = () => {
-    if (!requirements || requirements.length === 0) return true;
-
-    const requiredFields = requirements.filter((req) => req.required);
-    return requiredFields.every((req) => {
-      if (req.type === "file") {
-        return documents[req.field_name];
-      } else if (req.field_config?.type === "essay") {
-        const essayKey = `essay_response_${req.id}`;
-        const response = essayResponses[essayKey];
-        if (!response || response.trim() === "") return false;
-
-        // Check word limit if specified
-        if (req.field_config.word_limit) {
-          const wordCount = wordCounts[essayKey] || 0;
-          return wordCount <= req.field_config.word_limit;
-        }
-        return true;
-      } else {
-        return (
-          formData[req.field_name] && formData[req.field_name].trim() !== ""
-        );
-      }
-    });
-  };
 
   const handleSaveDraft = async () => {
     setIsSaving(true);
