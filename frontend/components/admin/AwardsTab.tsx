@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { Search, Award } from "lucide-react";
+import { Search, Award, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -16,6 +16,7 @@ interface AwardsTabProps {
   searchTerm: string;
   onSearchChange: (value: string) => void;
   onEditAward: (award: any) => void;
+  onCreateAward: () => void;
 }
 
 const AwardsTab: React.FC<AwardsTabProps> = ({
@@ -23,6 +24,7 @@ const AwardsTab: React.FC<AwardsTabProps> = ({
   searchTerm,
   onSearchChange,
   onEditAward,
+  onCreateAward,
 }) => {
   return (
     <div className="space-y-6">
@@ -39,6 +41,13 @@ const AwardsTab: React.FC<AwardsTabProps> = ({
               className="w-full pl-10 pr-4 py-2 border border-input rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring"
             />
           </div>
+          <Button
+            onClick={onCreateAward}
+            className="flex items-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
+          >
+            <Plus className="w-4 h-4" />
+            Create New Award
+          </Button>
         </div>
       </div>
 

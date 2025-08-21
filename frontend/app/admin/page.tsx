@@ -445,6 +445,8 @@ const AdminDashboard = () => {
     );
   };
 
+
+
   const addEssayQuestion = () => {
     if (essayQuestionForm.question.trim() && essayQuestionForm.label.trim()) {
       const uniqueId = `essay_${Date.now()}_${Math.random()
@@ -1196,8 +1198,9 @@ const AdminDashboard = () => {
             onEditAward={(award) => {
               setEditAward(award);
               setEditAwardForm({ ...award });
-                              setShowEditAwardModal(true);
-                            }}
+              setShowEditAwardModal(true);
+            }}
+            onCreateAward={() => setShowCreateAwardModal(true)}
           />
         )}
 
