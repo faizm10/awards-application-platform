@@ -13,6 +13,7 @@ import {
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { User, LogOut, Settings, Award, Home, FileText, BarChart3 } from "lucide-react"
 import { getCurrentUser, logout, type UserRole } from "@/lib/auth"
+import { ROUTES, NAVIGATION_ITEMS, ADMIN_NAVIGATION_ITEMS, REVIEWER_NAVIGATION_ITEMS } from "@/constants/routes"
 
 export function Navigation() {
   const user = getCurrentUser()
@@ -26,26 +27,26 @@ export function Navigation() {
   }
 
   const getNavigationItems = (role: UserRole) => {
-    const baseItems = [{ href: "/", label: "Home", icon: Home }]
+    const baseItems = [{ href: ROUTES.HOME, label: "Home", icon: Home }]
 
     switch (role) {
       case "student":
         return [
           ...baseItems,
-          { href: "/awards", label: "Awards", icon: Award },
-          { href: "/my-applications", label: "My Applications", icon: FileText },
+          { href: ROUTES.AWARDS, label: "Awards", icon: Award },
+          { href: ROUTES.MY_APPLICATIONS, label: "My Applications", icon: FileText },
         ]
       case "reviewer":
         return [
           ...baseItems,
-          { href: "/awards", label: "Awards", icon: Award },
-          { href: "/reviewer-dashboard", label: "Dashboard", icon: BarChart3 },
+          { href: ROUTES.AWARDS, label: "Awards", icon: Award },
+          { href: ROUTES.REVIEWER_DASHBOARD, label: "Dashboard", icon: BarChart3 },
         ]
       case "admin":
         return [
           ...baseItems,
-          { href: "/awards", label: "Awards", icon: Award },
-          { href: "/admin-dashboard", label: "Admin Dashboard", icon: BarChart3 },
+          { href: ROUTES.AWARDS, label: "Awards", icon: Award },
+          { href: ROUTES.ADMIN_DASHBOARD, label: "Admin Dashboard", icon: BarChart3 },
         ]
       default:
         return baseItems
@@ -58,14 +59,14 @@ export function Navigation() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
             <div className="flex items-center">
-              <Link href="/" className="flex items-center space-x-2">
+              <Link href={ROUTES.HOME} className="flex items-center space-x-2">
                 <Award className="h-8 w-8 text-primary" />
                 <span className="font-bold text-xl">Student Awards Portal</span>
               </Link>
             </div>
             <div className="flex items-center space-x-4">
               <Button variant="outline" asChild>
-                <Link href="/login">Login</Link>
+                <Link href={ROUTES.LOGIN}>Login</Link>
               </Button>
             </div>
           </div>
@@ -81,7 +82,7 @@ export function Navigation() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between h-16">
           <div className="flex items-center space-x-8">
-            <Link href="/" className="flex items-center space-x-2">
+            <Link href={ROUTES.HOME} className="flex items-center space-x-2">
               <Award className="h-8 w-8 text-primary" />
               <span className="font-bold text-xl">Student Awards Portal</span>
             </Link>

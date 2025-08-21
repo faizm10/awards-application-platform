@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator"
 import { ArrowLeft, FileText, Calendar, User, MessageSquare } from "lucide-react"
 import Link from "next/link"
 import { getApplicationById, getStatusColor, getStatusLabel } from "@/lib/applications"
+import { ROUTES } from "@/constants/routes"
 import { getAwardById } from "@/lib/awards"
 import { getCurrentUser } from "@/lib/auth"
 
@@ -35,7 +36,7 @@ export default function ApplicationDetailPage({ params }: ApplicationDetailPageP
       {/* Back Navigation */}
       <div className="mb-6">
         <Button variant="ghost" asChild className="mb-4">
-          <Link href="/my-applications">
+          <Link href={ROUTES.MY_APPLICATIONS}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to My Applications
           </Link>
@@ -269,14 +270,14 @@ export default function ApplicationDetailPage({ params }: ApplicationDetailPageP
               <div className="space-y-3">
                 {application.status === "draft" && (
                   <Button className="w-full" asChild>
-                    <Link href={`/awards/${award.id}/apply`}>Continue Application</Link>
+                    <Link href={ROUTES.AWARD_APPLY(award.id)}>Continue Application</Link>
                   </Button>
                 )}
                 <Button variant="outline" className="w-full bg-transparent" asChild>
-                  <Link href={`/awards/${award.id}`}>View Award Details</Link>
+                  <Link href={ROUTES.AWARD_DETAILS(award.id)}>View Award Details</Link>
                 </Button>
                 <Button variant="ghost" className="w-full" asChild>
-                  <Link href="/awards">Browse Other Awards</Link>
+                  <Link href={ROUTES.AWARDS}>Browse Other Awards</Link>
                 </Button>
               </div>
             </CardContent>

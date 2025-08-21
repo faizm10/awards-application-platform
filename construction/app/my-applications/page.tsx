@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Search, FileText, Calendar, DollarSign, Eye, Edit } from "lucide-react"
 import Link from "next/link"
 import { getCurrentUser } from "@/lib/auth"
+import { ROUTES } from "@/constants/routes"
 import { getApplicationsByStudent, getStatusColor, getStatusLabel } from "@/lib/applications"
 import { getAwardById } from "@/lib/awards"
 
@@ -183,13 +184,13 @@ export default function MyApplicationsPage() {
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
                             <Button variant="ghost" size="sm" asChild>
-                              <Link href={`/my-applications/${application.id}`}>
+                              <Link href={ROUTES.APPLICATION_DETAILS(application.id)}>
                                 <Eye className="h-4 w-4" />
                               </Link>
                             </Button>
                             {application.status === "draft" && (
                               <Button variant="ghost" size="sm" asChild>
-                                <Link href={`/awards/${award.id}/apply`}>
+                                <Link href={ROUTES.AWARD_APPLY(award.id)}>
                                   <Edit className="h-4 w-4" />
                                 </Link>
                               </Button>
@@ -216,7 +217,7 @@ export default function MyApplicationsPage() {
             </p>
             {applications.length === 0 ? (
               <Button asChild>
-                <Link href="/awards">Browse Awards</Link>
+                <Link href={ROUTES.AWARDS}>Browse Awards</Link>
               </Button>
             ) : (
               <Button

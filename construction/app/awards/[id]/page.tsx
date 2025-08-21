@@ -19,6 +19,7 @@ import {
   ArrowLeft,
 } from "lucide-react"
 import Link from "next/link"
+import { ROUTES } from "@/constants/routes"
 import { getAwardById } from "@/lib/awards"
 import { getCurrentUser } from "@/lib/auth"
 
@@ -84,7 +85,7 @@ export default function AwardDetailPage({ params }: AwardDetailPageProps) {
       {/* Back Navigation */}
       <div className="mb-6">
         <Button variant="ghost" asChild className="mb-4">
-          <Link href="/awards">
+          <Link href={ROUTES.AWARDS}>
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back to Awards
           </Link>
@@ -275,7 +276,7 @@ export default function AwardDetailPage({ params }: AwardDetailPageProps) {
               {award.status === "open" && isStudent ? (
                 <div className="space-y-4">
                   <Button size="lg" className="w-full" asChild>
-                    <Link href={`/awards/${award.id}/apply`}>
+                    <Link href={ROUTES.AWARD_APPLY(award.id)}>
                       Apply Now
                       <FileText className="ml-2 h-4 w-4" />
                     </Link>
@@ -300,7 +301,7 @@ export default function AwardDetailPage({ params }: AwardDetailPageProps) {
                 </div>
               ) : (
                 <Button size="lg" variant="outline" className="w-full bg-transparent" asChild>
-                  <Link href="/awards">Browse Other Awards</Link>
+                  <Link href={ROUTES.AWARDS}>Browse Other Awards</Link>
                 </Button>
               )}
             </CardContent>

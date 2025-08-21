@@ -6,6 +6,7 @@ import { Calendar, Users, DollarSign, AlertCircle } from "lucide-react"
 import Link from "next/link"
 import type { Award } from "@/lib/awards"
 import { getCurrentUser } from "@/lib/auth"
+import { ROUTES } from "@/constants/routes"
 
 interface AwardCardProps {
   award: Award
@@ -130,7 +131,7 @@ export function AwardCard({ award }: AwardCardProps) {
         <div className="pt-4 mt-auto">
           {award.status === "open" && isStudent ? (
             <Button className="w-full" asChild>
-              <Link href={`/awards/${award.id}`}>Apply Now</Link>
+              <Link href={ROUTES.AWARD_DETAILS(award.id)}>Apply Now</Link>
             </Button>
           ) : award.status === "closed" ? (
             <Button variant="outline" className="w-full bg-transparent" disabled>
@@ -138,11 +139,11 @@ export function AwardCard({ award }: AwardCardProps) {
             </Button>
           ) : award.status === "upcoming" ? (
             <Button variant="outline" className="w-full bg-transparent" asChild>
-              <Link href={`/awards/${award.id}`}>View Details</Link>
+              <Link href={ROUTES.AWARD_DETAILS(award.id)}>View Details</Link>
             </Button>
           ) : (
             <Button variant="outline" className="w-full bg-transparent" asChild>
-              <Link href={`/awards/${award.id}`}>View Details</Link>
+              <Link href={ROUTES.AWARD_DETAILS(award.id)}>View Details</Link>
             </Button>
           )}
         </div>
