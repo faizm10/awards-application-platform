@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { Search, Filter, Award, Eye, Clock, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { Search, Filter, Award, Eye, Clock, CheckCircle, XCircle, AlertCircle, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -22,6 +22,7 @@ interface ApplicationsTabProps {
   onFilterStatusChange: (value: string) => void;
   onFilterAwardChange: (value: string) => void;
   onViewApplication: (app: any) => void;
+  onDownloadPDF: (app: any) => void;
   applicationCounts: { [key: string]: number };
 }
 
@@ -35,6 +36,7 @@ const ApplicationsTab: React.FC<ApplicationsTabProps> = ({
   onFilterStatusChange,
   onFilterAwardChange,
   onViewApplication,
+  onDownloadPDF,
   applicationCounts,
 }) => {
   const getStatusIcon = (status: any) => {
@@ -247,18 +249,26 @@ const ApplicationsTab: React.FC<ApplicationsTabProps> = ({
                         ${app.award?.value?.toLocaleString()}
                       </span>
                     </TableCell>
-                    <TableCell className="py-3 px-4">
-                      <div className="flex items-center gap-2">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => onViewApplication(app)}
-                        >
-                          <Eye className="w-4 h-4 mr-1" />
-                          View/Edit
-                        </Button>
-                      </div>
-                    </TableCell>
+                                            <TableCell className="py-3 px-4">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => onViewApplication(app)}
+                            >
+                              <Eye className="w-4 h-4 mr-1" />
+                              View/Edit
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => onDownloadPDF(app)}
+                            >
+                              <Download className="w-4 h-4 mr-1" />
+                              PDF
+                            </Button>
+                          </div>
+                        </TableCell>
                   </TableRow>
                 ))}
             </TableBody>

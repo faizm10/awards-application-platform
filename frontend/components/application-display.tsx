@@ -239,6 +239,37 @@ const ApplicationStatus: React.FC<ApplicationStatusProps> = ({ awardId, userId }
 
   // If application already submitted
   if (application) {
+    const handleDownloadPDF = async () => {
+      try {
+        const response = await fetch("/api/applications/generate-pdf", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            applicationId: application.id,
+          }),
+        });
+
+        if (response.ok) {
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = `application-${application.id}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+        } else {
+          throw new Error("Failed to generate PDF");
+        }
+      } catch (error) {
+        console.error("Error generating PDF:", error);
+        alert("Failed to generate PDF. Please try again.");
+      }
+    };
+
     return (
       <Card>
         <CardHeader>
@@ -259,7 +290,18 @@ const ApplicationStatus: React.FC<ApplicationStatusProps> = ({ awardId, userId }
                 })}
               </CardDescription>
             </div>
-            <StatusBadge status={application.status} />
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadPDF}
+                className="flex items-center gap-2"
+              >
+                <Download className="w-4 h-4" />
+                Download PDF
+              </Button>
+              <StatusBadge status={application.status} />
+            </div>
           </div>
         </CardHeader>
         <CardContent>
