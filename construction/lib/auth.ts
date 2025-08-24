@@ -1,3 +1,5 @@
+import { createClient } from '@/supabase/client';
+
 export type UserRole = "student" | "reviewer" | "admin"
 
 export interface User {
@@ -7,6 +9,44 @@ export interface User {
   role: UserRole
   studentId?: string
   faculty?: string
+}
+
+export interface UserProfile {
+  id: string;
+  email: string;
+  full_name: string | null;
+  user_type: 'student' | 'reviewer' | 'admin';
+  created_at: string;
+  updated_at: string;
+  committee?: string;
+}
+
+/**
+ * Get user profile data including user_type
+ */
+export async function getUserProfile(userId: string): Promise<UserProfile | null> {
+  const supabase = createClient();
+  
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .single();
+
+  if (error) {
+    console.error('Error fetching user profile:', error);
+    return null;
+  }
+
+  return data;
+}
+
+/**
+ * Get user type (student, reviewer, admin)
+ */
+export async function getUserType(userId: string): Promise<'student' | 'reviewer' | 'admin' | null> {
+  const profile = await getUserProfile(userId);
+  return profile?.user_type || null;
 }
 
 // Mock authentication - in a real app, this would connect to your auth provider

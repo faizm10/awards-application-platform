@@ -97,8 +97,9 @@ export function Navigation() {
     )
   }
 
-  // For now, default to student role - in a real app, you'd get this from user metadata
-  const userRole = "student"
+  // Simple admin check - in a real app, this would come from user metadata
+  const isAdmin = user.email?.includes('admin') || user.email?.includes('administrator')
+  const userRole = isAdmin ? "admin" : "student"
   const navigationItems = getNavigationItems(userRole)
   const userName = user.email?.split('@')[0] || 'User'
 
@@ -148,12 +149,21 @@ export function Navigation() {
                   </div>
                 </div>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link href="/my-applications" className="flex items-center">
-                    <FileText className="mr-2 h-4 w-4" />
-                    My Applications
-                  </Link>
-                </DropdownMenuItem>
+                {isAdmin ? (
+                  <DropdownMenuItem asChild>
+                    <Link href="/admin-dashboard" className="flex items-center">
+                      <BarChart3 className="mr-2 h-4 w-4" />
+                      Admin Dashboard
+                    </Link>
+                  </DropdownMenuItem>
+                ) : (
+                  <DropdownMenuItem asChild>
+                    <Link href="/my-applications" className="flex items-center">
+                      <FileText className="mr-2 h-4 w-4" />
+                      My Applications
+                    </Link>
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem
                   className="text-destructive focus:text-destructive"

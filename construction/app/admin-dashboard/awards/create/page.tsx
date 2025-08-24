@@ -12,13 +12,12 @@ import { ArrowLeft, Save, Eye } from "lucide-react"
 import Link from "next/link"
 import { FormFieldBuilder } from "@/components/form-field-builder"
 import { createAward, defaultFormFields, type AwardTemplate, type AwardFormField } from "@/lib/admin"
-import { getCurrentUser } from "@/lib/auth"
-import { useToast } from "@/hooks/use-toast"
+import { useAuth } from "@/contexts/AuthContext"
+import { toast } from "sonner"
 
 export default function CreateAwardPage() {
   const router = useRouter()
-  const { toast } = useToast()
-  const user = getCurrentUser()
+  const { user } = useAuth()
 
   const [formData, setFormData] = useState<Partial<AwardTemplate>>({
     title: "",
@@ -40,6 +39,21 @@ export default function CreateAwardPage() {
   const [documentsText, setDocumentsText] = useState("Resume\nTranscript")
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  // Simple admin check
+  const isAdmin = user?.email?.includes('admin') || user?.email?.includes('administrator')
+  
+  if (!user || !isAdmin) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Card>
+          <CardContent className="pt-6 text-center">
+            <p>Access denied. This page is only available to administrators.</p>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   const handleInputChange = (field: keyof AwardTemplate, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
@@ -57,11 +71,7 @@ export default function CreateAwardPage() {
 
   const handleSave = async (status: "draft" | "published") => {
     if (!formData.title || !formData.description || !formData.value || !formData.deadline || !formData.faculty) {
-      toast({
-        title: "Missing Required Fields",
-        description: "Please fill in all required fields before saving.",
-        variant: "destructive",
-      })
+      toast.error("Please fill in all required fields before saving.")
       return
     }
 
@@ -81,18 +91,11 @@ export default function CreateAwardPage() {
 
       const newAward = createAward(awardData)
 
-      toast({
-        title: status === "draft" ? "Draft Saved" : "Award Published",
-        description: `Award "${newAward.title}" has been ${status === "draft" ? "saved as draft" : "published"}.`,
-      })
+      toast.success(`Award "${newAward.title}" has been ${status === "draft" ? "saved as draft" : "published"}.`)
 
       router.push("/admin-dashboard")
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to save award. Please try again.",
-        variant: "destructive",
-      })
+      toast.error("Failed to save award. Please try again.")
     } finally {
       setIsSubmitting(false)
     }

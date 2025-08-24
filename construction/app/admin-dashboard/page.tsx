@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -39,26 +39,53 @@ import {
   BarChart3,
   FileText,
   Settings,
+  Loader2,
 } from "lucide-react"
 import Link from "next/link"
-import { getCurrentUser } from "@/lib/auth"
-import { getAwards } from "@/lib/awards"
-import { getAwardStats, getApplicationStatsByAward } from "@/lib/admin"
+import { useAuth } from "@/contexts/AuthContext"
+import { getAwardsWithStats, getAwardStats, getApplicationStatsByAward, type AwardWithStats, type AwardStats } from "@/lib/admin"
 
 export default function AdminDashboardPage() {
-  const user = getCurrentUser()
+  const { user } = useAuth()
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
   const [awardToDelete, setAwardToDelete] = useState<string | null>(null)
+  const [awards, setAwards] = useState<AwardWithStats[]>([])
+  const [stats, setStats] = useState<AwardStats>({
+    totalAwards: 0,
+    activeAwards: 0,
+    draftAwards: 0,
+    totalApplications: 0,
+    averageApplicationsPerAward: 0,
+    totalValue: 0,
+  })
+  const [loading, setLoading] = useState(true)
 
-  const awards = getAwards()
-  const stats = getAwardStats()
+  // Fetch data on component mount
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [awardsData, statsData] = await Promise.all([
+          getAwardsWithStats(),
+          getAwardStats()
+        ]);
+        setAwards(awardsData);
+        setStats(statsData);
+      } catch (error) {
+        console.error('Error fetching admin data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   const filteredAwards = awards.filter((award) => {
     const matchesSearch =
       award.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      award.faculty.toLowerCase().includes(searchTerm.toLowerCase())
+      award.category.toLowerCase().includes(searchTerm.toLowerCase())
     const matchesStatus = statusFilter === "all" || award.status === statusFilter
     return matchesSearch && matchesStatus
   })
@@ -90,7 +117,10 @@ export default function AdminDashboardPage() {
     }
   }
 
-  if (!user || user.role !== "admin") {
+  // Simple admin check - in a real app, this would come from user metadata
+  const isAdmin = user?.email?.includes('admin') || user?.email?.includes('administrator')
+  
+  if (!user || !isAdmin) {
     return (
       <div className="container mx-auto px-4 py-8">
         <Card>
@@ -98,6 +128,19 @@ export default function AdminDashboardPage() {
             <p>Access denied. This page is only available to administrators.</p>
           </CardContent>
         </Card>
+      </div>
+    )
+  }
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center py-12">
+          <div className="flex items-center gap-2">
+            <Loader2 className="h-6 w-6 animate-spin" />
+            <span>Loading admin dashboard...</span>
+          </div>
+        </div>
       </div>
     )
   }
@@ -116,52 +159,6 @@ export default function AdminDashboardPage() {
             Create Award
           </Link>
         </Button>
-      </div>
-
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Awards</CardTitle>
-            <Award className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalAwards}</div>
-            <p className="text-xs text-muted-foreground">
-              {stats.activeAwards} active, {stats.draftAwards} draft
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Applications</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.totalApplications}</div>
-            <p className="text-xs text-muted-foreground">Avg {stats.averageApplicationsPerAward} per award</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Value</CardTitle>
-            <DollarSign className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">${(stats.totalValue / 1000000).toFixed(1)}M</div>
-            <p className="text-xs text-muted-foreground">In awards and scholarships</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">System Health</CardTitle>
-            <BarChart3 className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-600">Good</div>
-            <p className="text-xs text-muted-foreground">All systems operational</p>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Main Content */}
@@ -225,81 +222,78 @@ export default function AdminDashboardPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredAwards.map((award) => {
-                      const appStats = getApplicationStatsByAward(award.id)
-                      return (
-                        <TableRow key={award.id}>
-                          <TableCell>
-                            <div>
-                              <div className="font-medium">{award.title}</div>
-                              <div className="text-sm text-muted-foreground">{award.faculty}</div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="font-semibold text-primary">{award.value}</div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Calendar className="h-4 w-4 text-muted-foreground" />
-                              {new Date(award.deadline).toLocaleDateString()}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Users className="h-4 w-4 text-muted-foreground" />
-                              <span className="font-medium">{appStats.total}</span>
-                              {appStats.total > 0 && (
-                                <Badge variant="outline" className="text-xs">
-                                  {appStats.shortlisted} shortlisted
-                                </Badge>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className={getStatusColor(award.status)}>
-                              {award.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="sm">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem asChild>
-                                  <Link href={`/awards/${award.id}`}>
-                                    <Eye className="h-4 w-4 mr-2" />
-                                    View Details
-                                  </Link>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem asChild>
-                                  <Link href={`/admin-dashboard/awards/${award.id}/edit`}>
-                                    <Edit className="h-4 w-4 mr-2" />
-                                    Edit Award
-                                  </Link>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem asChild>
-                                  <Link href={`/admin-dashboard/awards/${award.id}/applications`}>
-                                    <Users className="h-4 w-4 mr-2" />
-                                    View Applications ({appStats.total})
-                                  </Link>
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  className="text-destructive focus:text-destructive"
-                                  onClick={() => handleDeleteAward(award.id)}
-                                >
-                                  <Trash2 className="h-4 w-4 mr-2" />
-                                  Delete Award
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </TableCell>
-                        </TableRow>
-                      )
-                    })}
+                    {filteredAwards.map((award) => (
+                      <TableRow key={award.id}>
+                        <TableCell>
+                          <div>
+                            <div className="font-medium">{award.title}</div>
+                            <div className="text-sm text-muted-foreground">{award.category}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-semibold text-primary">{award.value}</div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Calendar className="h-4 w-4 text-muted-foreground" />
+                            {new Date(award.deadline).toLocaleDateString()}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Users className="h-4 w-4 text-muted-foreground" />
+                            <span className="font-medium">{award.application_count}</span>
+                            {award.application_count > 0 && (
+                              <Badge variant="outline" className="text-xs">
+                                {award.application_count} applications
+                              </Badge>
+                                                        )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={getStatusColor(award.status)}>
+                            {award.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem asChild>
+                                <Link href={`/awards/${award.id}`}>
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  View Award
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
+                                <Link href={`/admin-dashboard/awards/${award.id}/edit`}>
+                                  <Edit className="h-4 w-4 mr-2" />
+                                  Edit Award
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
+                                <Link href={`/admin-dashboard/awards/${award.id}/applications`}>
+                                  <Users className="h-4 w-4 mr-2" />
+                                  View Applications ({award.application_count})
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive"
+                                onClick={() => handleDeleteAward(award.id)}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Delete Award
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
                   </TableBody>
                 </Table>
               </div>
