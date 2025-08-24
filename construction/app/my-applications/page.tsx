@@ -81,28 +81,30 @@ function MyApplicationsContent() {
     fetchApplications();
   }, [user]);
 
-  // Filter applications based on search and status
-  const filteredApplications = applications.filter((app) => {
-    const award = app.award as any; // Type assertion for award data
-    const matchesSearch = award?.title?.toLowerCase().includes(searchTerm.toLowerCase()) || false;
-    const matchesStatus = statusFilter === "all" || app.status === statusFilter;
+  // Filter applications to only show submitted and drafts, then apply search and status filters
+  const filteredApplications = applications
+    .filter((app) => app.status === "submitted" || app.status === "draft")
+    .filter((app) => {
+      const award = app.award as any; // Type assertion for award data
+      const matchesSearch = award?.title?.toLowerCase().includes(searchTerm.toLowerCase()) || false;
+      const matchesStatus = statusFilter === "all" || app.status === statusFilter;
 
-    return matchesSearch && matchesStatus;
-  });
+      return matchesSearch && matchesStatus;
+    });
 
   const getApplicationStats = () => {
-    const total = applications.length;
-    const submitted = applications.filter(
-      (app) => app.status !== "draft"
+    const submittedAndDrafts = applications.filter(
+      (app) => app.status === "submitted" || app.status === "draft"
+    );
+    const total = submittedAndDrafts.length;
+    const submitted = submittedAndDrafts.filter(
+      (app) => app.status === "submitted"
     ).length;
-    const underReview = applications.filter(
-      (app) => app.status === "under_review"
-    ).length;
-    const approved = applications.filter(
-      (app) => app.status === "approved"
+    const drafts = submittedAndDrafts.filter(
+      (app) => app.status === "draft"
     ).length;
 
-    return { total, submitted, underReview, approved };
+    return { total, submitted, drafts };
   };
 
   const stats = getApplicationStats();
@@ -160,9 +162,7 @@ function MyApplicationsContent() {
             <span className="text-muted-foreground">•</span>
             <span className="text-blue-600 font-medium">{stats.submitted} submitted</span>
             <span className="text-muted-foreground">•</span>
-            <span className="text-yellow-600 font-medium">{stats.underReview} reviewing</span>
-            <span className="text-muted-foreground">•</span>
-            <span className="text-green-600 font-medium">{stats.approved} approved</span>
+            <span className="text-gray-600 font-medium">{stats.drafts} drafts</span>
           </div>
         </div>
 
@@ -185,10 +185,6 @@ function MyApplicationsContent() {
               <SelectItem value="all">All Status</SelectItem>
               <SelectItem value="draft">Draft</SelectItem>
               <SelectItem value="submitted">Submitted</SelectItem>
-              <SelectItem value="under_review">Under Review</SelectItem>
-              <SelectItem value="reviewed">Reviewed</SelectItem>
-              <SelectItem value="approved">Approved</SelectItem>
-              <SelectItem value="rejected">Not Selected</SelectItem>
             </SelectContent>
           </Select>
         </div>

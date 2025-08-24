@@ -6,13 +6,14 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
-import { ArrowLeft, FileText, Calendar, User, MessageSquare, Loader2, AlertCircle, ExternalLink } from "lucide-react"
+import { ArrowLeft, FileText, Calendar, User, MessageSquare, Loader2, AlertCircle, ExternalLink, Download } from "lucide-react"
 import Link from "next/link"
-import { getApplicationById, getStatusColor, getStatusLabel, extractFormDataFromApplication, type Application } from "@/lib/applications"
+import { getApplicationById, getStatusColor, getStatusLabel, extractFormDataFromApplication, generateApplicationPDF, type Application } from "@/lib/applications"
 import { useAwardRequirements } from "@/hooks/use-award-requirements"
 import { useAuth } from "@/contexts/AuthContext"
 import { ProtectedRoute } from "@/components/auth/protected-route"
 import { useScrollToTop } from "@/hooks/use-scroll-to-top"
+import { PDFViewer } from "@/components/pdf-viewer"
 
 interface ApplicationDetailPageProps {
   params: Promise<{ id: string }>
@@ -25,6 +26,9 @@ function ApplicationDetailContent({ params }: ApplicationDetailPageProps) {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [id, setId] = useState<string | null>(null)
+  
+  // Always call useAwardRequirements with a fallback to prevent hook order issues
+  const { requirements } = useAwardRequirements(application?.award_id || "")
   
   // Scroll to top when page loads
   useScrollToTop()
@@ -126,11 +130,35 @@ function ApplicationDetailContent({ params }: ApplicationDetailPageProps) {
     )
   }
 
-  // Get requirements for dynamic field mapping
-  const { requirements } = useAwardRequirements(application.award_id);
+
 
   // Extract form data for display
   const { formData, documents, essayResponses } = extractFormDataFromApplication(application, requirements)
+
+  // Handle PDF download
+  const handleDownloadPDF = async () => {
+    try {
+      const pdfBlob = await generateApplicationPDF(application, award, requirements);
+      if (pdfBlob) {
+        const url = URL.createObjectURL(pdfBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        
+        // Create filename with fullname-awardname format
+        const fullName = `${formData.first_name || ''} ${formData.last_name || ''}`.trim();
+        const awardName = award.title.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-');
+        const fileName = `${fullName}-${awardName}.pdf`;
+        
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+    }
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -155,9 +183,22 @@ function ApplicationDetailContent({ params }: ApplicationDetailPageProps) {
                   <CardTitle className="text-2xl mb-2">{award.title}</CardTitle>
                   <CardDescription className="text-base">{award.description}</CardDescription>
                 </div>
-                <Badge variant="outline" className={getStatusColor(application.status)}>
-                  {getStatusLabel(application.status)}
-                </Badge>
+                <div className="flex items-center gap-3">
+                  <Badge variant="outline" className={getStatusColor(application.status)}>
+                    {getStatusLabel(application.status)}
+                  </Badge>
+                  {application.status === "submitted" && (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleDownloadPDF}
+                      className="flex items-center gap-2"
+                    >
+                      <Download className="h-4 w-4" />
+                      Download PDF
+                    </Button>
+                  )}
+                </div>
               </div>
             </CardHeader>
           </Card>
@@ -281,23 +322,21 @@ function ApplicationDetailContent({ params }: ApplicationDetailPageProps) {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="space-y-3">
+                <div className="space-y-6">
                   {Object.entries(documents).map(([key, url]) => {
                     if (!url) return null
 
+                    // Extract filename from URL
+                    const fileName = url.split('/').pop() || key
+                    const documentTitle = key.replace(/([A-Z])/g, " $1").trim()
+
                     return (
-                      <div key={key} className="flex items-center gap-3 p-3 border rounded-lg">
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                        <div className="flex-1">
-                          <div className="font-medium capitalize">{key.replace(/([A-Z])/g, " $1").trim()}</div>
-                          <div className="text-sm text-muted-foreground truncate">{url}</div>
-                        </div>
-                        <Button variant="ghost" size="sm" asChild>
-                          <a href={url} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink className="h-4 w-4" />
-                          </a>
-                        </Button>
-                      </div>
+                      <PDFViewer
+                        key={key}
+                        fileName={fileName}
+                        fileUrl={url}
+                        title={documentTitle}
+                      />
                     )
                   })}
                 </div>
@@ -359,7 +398,7 @@ function ApplicationDetailContent({ params }: ApplicationDetailPageProps) {
           </Card>
 
           {/* Award Information */}
-          <Card>
+          {/* <Card>
             <CardHeader>
               <CardTitle>Award Information</CardTitle>
             </CardHeader>
@@ -379,7 +418,7 @@ function ApplicationDetailContent({ params }: ApplicationDetailPageProps) {
                 <div className="text-sm text-muted-foreground">Category</div>
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
 
           {/* Actions */}
           <Card>

@@ -456,4 +456,170 @@ export function extractFormDataFromApplication(
   return { formData, documents, essayResponses };
 }
 
+/**
+ * Generate a professional PDF of the application data
+ */
+export async function generateApplicationPDF(application: Application, award: any, requirements?: Array<{ field_name: string; label: string; type: string; required?: boolean; field_config?: any }>): Promise<Blob | null> {
+  try {
+    // Extract form data
+    const { formData, essayResponses } = extractFormDataFromApplication(application, requirements);
+    
+    // Create PDF content using jsPDF
+    const { jsPDF } = await import('jspdf');
+    const doc = new jsPDF();
+    
+    // Set up styling
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const margin = 20;
+    const contentWidth = pageWidth - (margin * 2);
+    let yPosition = margin;
+    
+    // Helper function to add text with word wrapping
+    const addWrappedText = (text: string, y: number, fontSize: number = 12, fontStyle: string = 'normal') => {
+      doc.setFontSize(fontSize);
+      doc.setFont('helvetica', fontStyle);
+      const lines = doc.splitTextToSize(text, contentWidth);
+      doc.text(lines, margin, y);
+      return y + (lines.length * fontSize * 0.4);
+    };
+    
+    // Helper function to add section header
+    const addSectionHeader = (title: string, y: number) => {
+      yPosition = addWrappedText(title, y, 16, 'bold');
+      yPosition += 5;
+      return yPosition;
+    };
+    
+    // Helper function to add field
+    const addField = (label: string, value: string, y: number) => {
+      if (!value || value.trim() === '') return y;
+      
+      const labelText = `${label}:`;
+      const valueText = value;
+      
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text(labelText, margin, y);
+      
+      doc.setFont('helvetica', 'normal');
+      const lines = doc.splitTextToSize(valueText, contentWidth - 30);
+      doc.text(lines, margin + 30, y);
+      
+      return y + (lines.length * 10 * 0.4) + 5;
+    };
+    
+    // Header
+    yPosition = addWrappedText('AWARD APPLICATION', yPosition, 20, 'bold');
+    yPosition += 10;
+    
+    // Award Information
+    yPosition = addSectionHeader('Award Information', yPosition);
+    yPosition = addField('Award Title', award?.title || 'N/A', yPosition);
+    yPosition = addField('Award Value', award?.value || 'N/A', yPosition);
+    yPosition = addField('Category', award?.category || 'N/A', yPosition);
+    yPosition = addField('Application Status', getStatusLabel(application.status), yPosition);
+    yPosition = addField('Submitted Date', application.submitted_at ? new Date(application.submitted_at).toLocaleDateString() : 'N/A', yPosition);
+    yPosition += 10;
+    
+    // Check if we need a new page
+    if (yPosition > 250) {
+      doc.addPage();
+      yPosition = margin;
+    }
+    
+    // Personal Information
+    yPosition = addSectionHeader('Personal Information', yPosition);
+    yPosition = addField('First Name', formData.first_name || '', yPosition);
+    yPosition = addField('Last Name', formData.last_name || '', yPosition);
+    yPosition = addField('Student ID', formData.student_id_text || '', yPosition);
+    yPosition = addField('Email', formData.email || '', yPosition);
+    yPosition = addField('Major/Program', formData.major_program || '', yPosition);
+    yPosition = addField('Credits Completed', formData.credits_completed || '', yPosition);
+    yPosition += 10;
+    
+    // Check if we need a new page
+    if (yPosition > 250) {
+      doc.addPage();
+      yPosition = margin;
+    }
+    
+    // Application Responses
+    const hasResponses = formData.response_text || formData.travel_description || formData.travel_benefit || formData.budget;
+    if (hasResponses) {
+      yPosition = addSectionHeader('Application Responses', yPosition);
+      yPosition = addField('Response', formData.response_text || '', yPosition);
+      yPosition = addField('Travel Description', formData.travel_description || '', yPosition);
+      yPosition = addField('Travel Benefit', formData.travel_benefit || '', yPosition);
+      yPosition = addField('Budget', formData.budget || '', yPosition);
+      yPosition += 10;
+    }
+    
+    // Essay Responses
+    if (essayResponses && Object.keys(essayResponses).length > 0) {
+      // Check if we need a new page
+      if (yPosition > 200) {
+        doc.addPage();
+        yPosition = margin;
+      }
+      
+      yPosition = addSectionHeader('Essay Responses', yPosition);
+      
+      Object.entries(essayResponses).forEach(([key, response], index) => {
+        if (response && response.trim() !== '') {
+          const essayTitle = `Essay ${index + 1}`;
+          yPosition = addField(essayTitle, response, yPosition);
+          
+          // Check if we need a new page for long essays
+          if (yPosition > 250) {
+            doc.addPage();
+            yPosition = margin;
+          }
+        }
+      });
+      yPosition += 10;
+    }
+    
+    // Document List (without URLs)
+    if (requirements) {
+      const fileRequirements = requirements.filter(req => req.type === 'file');
+      if (fileRequirements.length > 0) {
+        // Check if we need a new page
+        if (yPosition > 250) {
+          doc.addPage();
+          yPosition = margin;
+        }
+        
+        yPosition = addSectionHeader('Submitted Documents', yPosition);
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        
+        fileRequirements.forEach((req, index) => {
+          const isRequired = req.required ? ' (Required)' : ' (Optional)';
+          const docText = `${index + 1}. ${req.label}${isRequired}`;
+          doc.text(docText, margin, yPosition);
+          yPosition += 5;
+        });
+      }
+    }
+    
+    // Footer
+    const totalPages = doc.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`Page ${i} of ${totalPages}`, pageWidth - margin - 30, doc.internal.pageSize.getHeight() - 10);
+      doc.text(`Generated on ${new Date().toLocaleDateString()}`, margin, doc.internal.pageSize.getHeight() - 10);
+    }
+    
+    // Generate PDF blob
+    const pdfBlob = doc.output('blob');
+    return pdfBlob;
+    
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    return null;
+  }
+}
+
 

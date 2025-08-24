@@ -42,6 +42,8 @@ import {
   getApplicationByAwardAndStudent,
   saveApplicationDraft,
   submitApplication,
+  updateApplication,
+  createApplication,
   transformFormDataToApplication,
   extractFormDataFromApplication,
   validateApplicationForm,
@@ -305,12 +307,20 @@ function ApplyPageContent({ params }: ApplyPageProps) {
         requirements
       );
 
-      const result = await saveApplicationDraft(
-        id!,
-        user!.id,
-        applicationFormData,
-        existingApplication?.id
-      );
+      let result;
+      if (existingApplication) {
+        // Update existing application with draft status
+        result = await updateApplication(existingApplication.id, {
+          ...applicationFormData,
+          status: "draft"
+        });
+      } else {
+        // Create new application with draft status
+        result = await createApplication(id!, user!.id, {
+          ...applicationFormData,
+          status: "draft"
+        });
+      }
 
       if (result) {
         setExistingApplication(result);
