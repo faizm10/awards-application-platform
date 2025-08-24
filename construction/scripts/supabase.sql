@@ -53,7 +53,6 @@ CREATE TABLE public.awards (
   citizenship ARRAY NOT NULL DEFAULT '{}'::text[],
   description text NOT NULL,
   eligibility text NOT NULL,
-  application_method text NOT NULL,
   category text NOT NULL,
   is_active boolean DEFAULT true,
   created_at timestamp with time zone DEFAULT now(),

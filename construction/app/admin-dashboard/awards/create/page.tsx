@@ -101,7 +101,7 @@ export default function CreateAwardPage() {
     }
   }
 
-  if (!user || user.role !== "admin") {
+  if (!user || !isAdmin) {
     return (
       <div className="container mx-auto px-4 py-8">
         <Card>
