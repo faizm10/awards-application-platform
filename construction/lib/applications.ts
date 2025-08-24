@@ -173,6 +173,8 @@ export async function createApplication(
     award_id: awardId,
     student_id: studentId,
     status: "draft",
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
     ...formData,
   };
 
@@ -184,6 +186,9 @@ export async function createApplication(
 
   if (error) {
     console.error("Error creating application:", error);
+    console.error("Application data:", applicationData);
+    console.error("Award ID:", awardId);
+    console.error("Student ID:", studentId);
     return null;
   }
 
@@ -333,14 +338,22 @@ export function validateApplicationForm(
 }
 
 /**
- * Transform form data to match database schema
+ * Transform form data to match database schema with dynamic field mapping
  */
 export function transformFormDataToApplication(
   formData: Record<string, string>,
   documents: Record<string, string>,
-  essayResponses: Record<string, string>
+  essayResponses: Record<string, string>,
+  requirements?: Array<{ field_name: string; type: string; field_config?: any }>
 ): ApplicationFormData {
   const transformed: ApplicationFormData = {};
+
+  console.log("transformFormDataToApplication called with:", {
+    formData,
+    documents,
+    essayResponses,
+    requirements
+  });
 
   // Map form fields
   Object.entries(formData).forEach(([key, value]) => {
@@ -349,38 +362,39 @@ export function transformFormDataToApplication(
     }
   });
 
-  // Map document URLs - handle common field name mappings
+  // Map document URLs dynamically based on requirements
   Object.entries(documents).forEach(([key, url]) => {
     if (url && url.trim() !== "") {
-      let fieldName: keyof ApplicationFormData;
+      // Find the corresponding requirement to get the field_name
+      const requirement = requirements?.find(req => 
+        req.field_name === key || 
+        req.field_name.toLowerCase() === key.toLowerCase()
+      );
       
-      // Map common field names to database columns
-      switch (key.toLowerCase()) {
-        case 'resume':
-          fieldName = 'resume_url';
-          break;
-        case 'letter':
-        case 'reference_letter':
-        case 'reference letter':
-          fieldName = 'letter_url';
-          break;
-        case 'community_letter':
-        case 'community letter':
-          fieldName = 'community_letter_url';
-          break;
-        case 'international_intent':
-        case 'international intent':
-          fieldName = 'international_intent_url';
-          break;
-        case 'certificate':
-          fieldName = 'certificate_url';
-          break;
-        default:
-          // For other fields, append _url
-          fieldName = `${key}_url` as keyof ApplicationFormData;
+      if (requirement) {
+        let fieldName: keyof ApplicationFormData;
+        
+        if (requirement.type === 'file') {
+          // For file types, check if field_name already ends with _url
+          if (requirement.field_name.endsWith('_url')) {
+            fieldName = requirement.field_name as keyof ApplicationFormData;
+          } else {
+            fieldName = `${requirement.field_name}_url` as keyof ApplicationFormData;
+          }
+        } else {
+          fieldName = requirement.field_name as keyof ApplicationFormData;
+        }
+        
+        transformed[fieldName] = url;
+        console.log(`Mapped document ${key} to field ${fieldName}`);
+      } else {
+        // Fallback: append _url for unknown fields, but avoid double _url
+        const fieldName = key.endsWith('_url') 
+          ? key as keyof ApplicationFormData
+          : `${key}_url` as keyof ApplicationFormData;
+        transformed[fieldName] = url;
+        console.log(`Fallback mapped document ${key} to field ${fieldName}`);
       }
-      
-      transformed[fieldName] = url;
     }
   });
 
@@ -389,13 +403,17 @@ export function transformFormDataToApplication(
     transformed.essay_responses = essayResponses;
   }
 
+  console.log("Final transformed data:", transformed);
   return transformed;
 }
 
 /**
  * Extract form data from an existing application for display
  */
-export function extractFormDataFromApplication(application: Application): {
+export function extractFormDataFromApplication(
+  application: Application,
+  requirements?: Array<{ field_name: string; type: string; field_config?: any }>
+): {
   formData: Record<string, string>;
   documents: Record<string, string>;
   essayResponses: Record<string, string>;
@@ -412,9 +430,17 @@ export function extractFormDataFromApplication(application: Application): {
         key !== 'updated_at' && key !== 'essay_responses') {
       
       if (key.endsWith('_url')) {
-        // This is a document URL
+        // This is a document URL - find the original field name from requirements
         const fieldName = key.replace('_url', '');
-        documents[fieldName] = value;
+        const requirement = requirements?.find(req => 
+          req.field_name === fieldName || 
+          req.field_name === key || // Handle cases where field_name already has _url
+          `${req.field_name}_url` === key
+        );
+        
+        // Use the original field_name from requirements if found, otherwise use the key
+        const originalFieldName = requirement?.field_name || fieldName;
+        documents[originalFieldName] = value;
       } else {
         // This is a regular form field
         formData[key] = value;
@@ -429,3 +455,5 @@ export function extractFormDataFromApplication(application: Application): {
 
   return { formData, documents, essayResponses };
 }
+
+

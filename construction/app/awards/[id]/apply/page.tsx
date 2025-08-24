@@ -92,6 +92,8 @@ function ApplyPageContent({ params }: ApplyPageProps) {
     });
   }, [params]);
 
+
+
   // Fetch award and requirements data
   const {
     award,
@@ -192,7 +194,7 @@ function ApplyPageContent({ params }: ApplyPageProps) {
           
           if (existingApp) {
             // Extract form data from the application using helper function
-            const { formData: extractedFormData, documents: extractedDocuments, essayResponses: extractedEssayResponses } = extractFormDataFromApplication(existingApp);
+            const { formData: extractedFormData, documents: extractedDocuments, essayResponses: extractedEssayResponses } = extractFormDataFromApplication(existingApp, requirements);
             
             setFormData(extractedFormData);
             setDocuments(extractedDocuments);
@@ -299,7 +301,8 @@ function ApplyPageContent({ params }: ApplyPageProps) {
       const applicationFormData = transformFormDataToApplication(
         formData,
         documents,
-        essayResponses
+        essayResponses,
+        requirements
       );
 
       const result = await saveApplicationDraft(
@@ -367,7 +370,8 @@ function ApplyPageContent({ params }: ApplyPageProps) {
       const applicationFormData = transformFormDataToApplication(
         formData,
         documents,
-        essayResponses
+        essayResponses,
+        requirements
       );
 
       let result;

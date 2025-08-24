@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator"
 import { ArrowLeft, FileText, Calendar, User, MessageSquare, Loader2, AlertCircle, ExternalLink } from "lucide-react"
 import Link from "next/link"
 import { getApplicationById, getStatusColor, getStatusLabel, extractFormDataFromApplication, type Application } from "@/lib/applications"
+import { useAwardRequirements } from "@/hooks/use-award-requirements"
 import { useAuth } from "@/contexts/AuthContext"
 import { ProtectedRoute } from "@/components/auth/protected-route"
 import { useScrollToTop } from "@/hooks/use-scroll-to-top"
@@ -125,8 +126,11 @@ function ApplicationDetailContent({ params }: ApplicationDetailPageProps) {
     )
   }
 
+  // Get requirements for dynamic field mapping
+  const { requirements } = useAwardRequirements(application.award_id);
+
   // Extract form data for display
-  const { formData, documents, essayResponses } = extractFormDataFromApplication(application)
+  const { formData, documents, essayResponses } = extractFormDataFromApplication(application, requirements)
 
   return (
     <div className="container mx-auto px-4 py-8">
