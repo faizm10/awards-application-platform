@@ -33,7 +33,11 @@ export function LoginForm({ redirect }: { redirect?: string }) {
     try {
       const { error } = await signIn(email, password);
       if (error) throw error;
-      router.push(redirect || "/awards");
+      
+      // Check if user is admin and redirect accordingly
+      const isAdmin = email.includes('admin') || email.includes('administrator');
+      const redirectPath = redirect || (isAdmin ? "/admin-dashboard" : "/awards");
+      router.push(redirectPath);
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "An error occurred");
     } finally {
