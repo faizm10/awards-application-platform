@@ -12,7 +12,7 @@ import type { Application } from "@/lib/applications"
 import type { Award } from "@/lib/awards"
 import type { ApplicationReview } from "@/lib/reviews"
 import { getDecisionColor, getDecisionLabel, createOrUpdateReview } from "@/lib/reviews"
-import { useToast } from "@/hooks/use-toast"
+import { toast } from "sonner"
 
 interface ApplicationReviewCardProps {
   application: Application
@@ -29,7 +29,6 @@ export function ApplicationReviewCard({
   reviewerId,
   onReviewUpdate,
 }: ApplicationReviewCardProps) {
-  const { toast } = useToast()
   const [decision, setDecision] = useState<ApplicationReview["decision"]>(existingReview?.decision || "pending")
   const [comments, setComments] = useState(existingReview?.comments || "")
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -43,16 +42,11 @@ export function ApplicationReviewCard({
       const updatedReview = createOrUpdateReview(application.id, reviewerId, newDecision, comments)
       onReviewUpdate?.(updatedReview)
 
-      toast({
-        title: "Decision Updated",
+      toast.success("Decision Updated", {
         description: `Application ${getDecisionLabel(newDecision).toLowerCase()}.`,
       })
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to update decision. Please try again.",
-        variant: "destructive",
-      })
+      toast.error("Failed to update decision. Please try again.")
     } finally {
       setIsSubmitting(false)
     }
@@ -64,16 +58,11 @@ export function ApplicationReviewCard({
       const updatedReview = createOrUpdateReview(application.id, reviewerId, decision, comments)
       onReviewUpdate?.(updatedReview)
 
-      toast({
-        title: "Comments Saved",
+      toast.success("Comments Saved", {
         description: "Your review comments have been saved.",
       })
     } catch (error) {
-      toast({
-        title: "Error",
-        description: "Failed to save comments. Please try again.",
-        variant: "destructive",
-      })
+      toast.error("Failed to save comments. Please try again.")
     } finally {
       setIsSubmitting(false)
     }
@@ -86,9 +75,9 @@ export function ApplicationReviewCard({
           <div className="flex-1 min-w-0">
             <CardTitle className="flex items-center gap-2">
               <User className="h-5 w-5" />
-              {application.studentName}
+              {`${application.first_name || ''} ${application.last_name || ''}`.trim() || 'Unknown Student'}
             </CardTitle>
-            <CardDescription>{application.studentEmail}</CardDescription>
+            <CardDescription>{application.email || 'No email'}</CardDescription>
           </div>
           <Badge variant="outline" className={getDecisionColor(decision)}>
             {getDecisionLabel(decision)}
@@ -106,16 +95,13 @@ export function ApplicationReviewCard({
             </div>
             <div className="pl-6 space-y-1 text-sm">
               <div>
-                <span className="font-medium">GPA:</span> {application.formData.gpa}
+                <span className="font-medium">Student ID:</span> {application.student_id_text || 'N/A'}
               </div>
               <div>
-                <span className="font-medium">Year:</span> {application.formData.year}
+                <span className="font-medium">Program:</span> {application.major_program || 'N/A'}
               </div>
               <div>
-                <span className="font-medium">Program:</span> {application.formData.program}
-              </div>
-              <div>
-                <span className="font-medium">Faculty:</span> {application.formData.faculty}
+                <span className="font-medium">Credits:</span> {application.credits_completed || 'N/A'}
               </div>
             </div>
           </div>
@@ -128,7 +114,7 @@ export function ApplicationReviewCard({
             <div className="pl-6 space-y-1 text-sm">
               <div>
                 <span className="font-medium">Submitted:</span>{" "}
-                {application.submittedAt ? new Date(application.submittedAt).toLocaleDateString() : "Not submitted"}
+                {application.submitted_at ? new Date(application.submitted_at).toLocaleDateString() : "Not submitted"}
               </div>
               <div>
                 <span className="font-medium">Award Value:</span> {award.value}
@@ -142,22 +128,22 @@ export function ApplicationReviewCard({
 
         <Separator />
 
-        {/* Personal Statement */}
-        {application.formData.personalStatement && (
+        {/* Travel Benefit */}
+        {application.travel_benefit && (
           <div className="space-y-3">
-            <h4 className="font-medium">Personal Statement</h4>
+            <h4 className="font-medium">Travel Benefit Description</h4>
             <div className="bg-muted/50 p-4 rounded-lg">
-              <p className="text-sm leading-relaxed whitespace-pre-wrap">{application.formData.personalStatement}</p>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap">{application.travel_benefit}</p>
             </div>
           </div>
         )}
 
-        {/* Additional Information */}
-        {application.formData.additionalInfo && (
+        {/* Budget */}
+        {application.budget && (
           <div className="space-y-3">
-            <h4 className="font-medium">Additional Information</h4>
+            <h4 className="font-medium">Budget Breakdown</h4>
             <div className="bg-muted/50 p-4 rounded-lg">
-              <p className="text-sm leading-relaxed whitespace-pre-wrap">{application.formData.additionalInfo}</p>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap">{application.budget}</p>
             </div>
           </div>
         )}
@@ -173,23 +159,24 @@ export function ApplicationReviewCard({
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             {/* Resume */}
-            {application.documents.resume && <PDFViewer fileName={application.documents.resume} title="Resume" />}
-
-            {/* Transcript */}
-            {application.documents.transcript && (
-              <PDFViewer fileName={application.documents.transcript} title="Transcript" />
+            {application.resume_url && (
+              <PDFViewer fileUrl={application.resume_url} fileName="resume.pdf" title="Resume" />
             )}
 
-            {/* Other Documents */}
-            {application.documents.other &&
-              Object.entries(application.documents.other).map(([docName, fileName]) => (
-                <PDFViewer key={docName} fileName={fileName} title={docName} />
-              ))}
+            {/* Certificate */}
+            {application.certificate_url && (
+              <PDFViewer fileUrl={application.certificate_url} fileName="certificate.pdf" title="Certificate" />
+            )}
 
-            {/* Reference Letters */}
-            {application.documents.referenceLetters?.map((letter, index) => (
-              <PDFViewer key={index} fileName={letter} title={`Reference Letter ${index + 1}`} />
-            ))}
+            {/* International Intent */}
+            {application.international_intent_url && (
+              <PDFViewer fileUrl={application.international_intent_url} fileName="international_intent.pdf" title="International Intent" />
+            )}
+
+            {/* Community Letter */}
+            {application.community_letter_url && (
+              <PDFViewer fileUrl={application.community_letter_url} fileName="community_letter.pdf" title="Community Letter" />
+            )}
           </div>
         </div>
 

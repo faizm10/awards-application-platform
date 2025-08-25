@@ -4,8 +4,9 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Award, Mail, CheckCircle } from "lucide-react";
+import { Suspense } from "react";
 
-export default function SignUpSuccessPage() {
+function SignUpSuccessContent() {
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect");
 
@@ -60,5 +61,31 @@ export default function SignUpSuccessPage() {
         </Card>
       </div>
     </div>
+  );
+}
+
+export default function SignUpSuccessPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen w-full items-center justify-center p-6 md:p-10 bg-background">
+        <div className="w-full max-w-md">
+          <Card>
+            <CardContent className="pt-6">
+              <div className="text-center space-y-6">
+                <div className="animate-pulse">
+                  <div className="h-8 w-8 bg-gray-200 rounded-full mx-auto"></div>
+                </div>
+                <div className="space-y-2">
+                  <div className="h-6 bg-gray-200 rounded w-3/4 mx-auto"></div>
+                  <div className="h-4 bg-gray-200 rounded w-full"></div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    }>
+      <SignUpSuccessContent />
+    </Suspense>
   );
 }
