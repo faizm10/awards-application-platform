@@ -74,7 +74,6 @@ CREATE TABLE public.reviews (
   id uuid NOT NULL DEFAULT gen_random_uuid(),
   application_id uuid,
   reviewer_id uuid,
-  rating integer CHECK (rating >= 1 AND rating <= 5),
   comments text,
   created_at timestamp with time zone DEFAULT now(),
   updated_at timestamp with time zone DEFAULT now(),

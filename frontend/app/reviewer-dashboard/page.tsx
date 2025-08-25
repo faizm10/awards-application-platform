@@ -42,6 +42,7 @@ import {
 import { useAuth } from "@/contexts/AuthContext"
 import { createClient } from "@/supabase/client"
 import { PDFViewer } from "@/components/pdf-viewer"
+import { toast } from "sonner"
 
 interface Application {
   id: string
@@ -84,8 +85,8 @@ interface ReviewDecision {
   id: string
   application_id: string
   reviewer_id: string
-  decision: "pending" | "shortlisted" | "not_shortlisted"
-  notes: string
+  shortlisted: boolean
+  comments: string
   created_at: string
   updated_at: string
 }
@@ -98,7 +99,6 @@ export default function ReviewerDashboardPage() {
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedAward, setSelectedAward] = useState("all")
-  const [decisionFilter, setDecisionFilter] = useState("all")
   const [currentApplicationIndex, setCurrentApplicationIndex] = useState(0)
   const [showApplicationModal, setShowApplicationModal] = useState(false)
   const [currentReview, setCurrentReview] = useState<ReviewDecision | null>(null)
@@ -138,7 +138,7 @@ export default function ReviewerDashboardPage() {
 
         // Fetch existing reviews
         const { data: reviewsData } = await supabase
-          .from('application_reviews')
+          .from('reviews')
           .select('*')
           .eq('reviewer_id', user.id)
         
@@ -168,10 +168,8 @@ export default function ReviewerDashboardPage() {
     const matchesAward = selectedAward === "all" || app.award_id === selectedAward
 
     const existingReview = reviews.find(r => r.application_id === app.id)
-    const decision = existingReview?.decision || "pending"
-    const matchesDecision = decisionFilter === "all" || decision === decisionFilter
 
-    return matchesSearch && matchesAward && matchesDecision
+    return matchesSearch && matchesAward
   })
 
   // Get stats
@@ -179,15 +177,15 @@ export default function ReviewerDashboardPage() {
     total: filteredApplications.length,
     pending: filteredApplications.filter(app => {
       const review = reviews.find(r => r.application_id === app.id)
-      return !review || review.decision === "pending"
+      return !review
     }).length,
     shortlisted: filteredApplications.filter(app => {
       const review = reviews.find(r => r.application_id === app.id)
-      return review?.decision === "shortlisted"
+      return review?.shortlisted === true
     }).length,
     notShortlisted: filteredApplications.filter(app => {
       const review = reviews.find(r => r.application_id === app.id)
-      return review?.decision === "not_shortlisted"
+      return review?.shortlisted === false
     }).length,
   }
 
@@ -205,7 +203,7 @@ export default function ReviewerDashboardPage() {
   }
 
   // Handle review submission
-  const submitReview = async (decision: "shortlisted" | "not_shortlisted") => {
+  const submitReview = async (shortlisted: boolean) => {
     if (!user || !filteredApplications[currentApplicationIndex]) return
 
     const application = filteredApplications[currentApplicationIndex]
@@ -215,8 +213,8 @@ export default function ReviewerDashboardPage() {
       const reviewData = {
         application_id: application.id,
         reviewer_id: user.id,
-        decision,
-        notes: reviewNotes,
+        shortlisted,
+        comments: reviewNotes,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       }
@@ -227,10 +225,10 @@ export default function ReviewerDashboardPage() {
       if (existingReview) {
         // Update existing review
         const { data, error } = await supabase
-          .from('application_reviews')
+          .from('reviews')
           .update({
-            decision,
-            notes: reviewNotes,
+            shortlisted,
+            comments: reviewNotes,
             updated_at: new Date().toISOString(),
           })
           .eq('id', existingReview.id)
@@ -240,12 +238,12 @@ export default function ReviewerDashboardPage() {
         if (error) throw error
 
         setReviews(prev => prev.map(r => 
-          r.id === existingReview.id ? { ...r, decision, notes: reviewNotes } : r
+          r.id === existingReview.id ? { ...r, shortlisted, comments: reviewNotes } : r
         ))
       } else {
         // Create new review
         const { data, error } = await supabase
-          .from('application_reviews')
+          .from('reviews')
           .insert(reviewData)
           .select()
           .single()
@@ -261,8 +259,20 @@ export default function ReviewerDashboardPage() {
       }
       
       setReviewNotes("")
+      
+      // Show success message
+      toast.success(
+        shortlisted ? "Application Shortlisted!" : "Application Not Shortlisted",
+        {
+          description: shortlisted 
+            ? "The application has been added to the shortlist." 
+            : "The application has been marked as not shortlisted.",
+          duration: 3000,
+        }
+      )
     } catch (error) {
       console.error('Error submitting review:', error)
+      toast.error("Failed to submit review. Please try again.")
     }
   }
 
@@ -270,6 +280,15 @@ export default function ReviewerDashboardPage() {
   const currentApplication = filteredApplications[currentApplicationIndex]
   const currentAward = currentApplication ? awards.find(a => a.id === currentApplication.award_id) : null
   const currentReviewData = currentApplication ? reviews.find(r => r.application_id === currentApplication.id) : null
+
+  // Update review notes when application changes
+  useEffect(() => {
+    if (currentReviewData) {
+      setReviewNotes(currentReviewData.comments || "")
+    } else {
+      setReviewNotes("")
+    }
+  }, [currentApplicationIndex, currentReviewData])
 
   if (!user || !isReviewer) {
     return (
@@ -383,17 +402,7 @@ export default function ReviewerDashboardPage() {
               </SelectContent>
             </Select>
 
-            <Select value={decisionFilter} onValueChange={setDecisionFilter}>
-              <SelectTrigger>
-                <SelectValue placeholder="All Decisions" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Decisions</SelectItem>
-                <SelectItem value="pending">Pending Review</SelectItem>
-                <SelectItem value="shortlisted">Shortlisted</SelectItem>
-                <SelectItem value="not_shortlisted">Not Shortlisted</SelectItem>
-              </SelectContent>
-            </Select>
+
           </div>
         </CardContent>
       </Card>
@@ -529,12 +538,12 @@ export default function ReviewerDashboardPage() {
                       <Badge 
                         variant="outline" 
                         className={
-                          currentReviewData.decision === "shortlisted" 
+                          currentReviewData.shortlisted 
                             ? "bg-green-50 text-green-700 border-green-200" 
                             : "bg-red-50 text-red-700 border-red-200"
                         }
                       >
-                        {currentReviewData.decision === "shortlisted" ? "Shortlisted" : "Not Shortlisted"}
+                        {currentReviewData.shortlisted ? "Shortlisted" : "Not Shortlisted"}
                       </Badge>
                     </div>
                   )}
@@ -550,16 +559,18 @@ export default function ReviewerDashboardPage() {
                     />
                   </div>
                   
+
+                  
                   <div className="flex gap-2">
                     <Button
-                      onClick={() => submitReview("shortlisted")}
+                      onClick={() => submitReview(true)}
                       className="flex-1 bg-green-600 hover:bg-green-700"
                     >
                       <CheckCircle className="h-4 w-4 mr-2" />
                       Shortlist
                     </Button>
                     <Button
-                      onClick={() => submitReview("not_shortlisted")}
+                      onClick={() => submitReview(false)}
                       variant="destructive"
                       className="flex-1"
                     >
