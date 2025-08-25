@@ -606,6 +606,7 @@ export default function ReviewerDashboardPage() {
                       </div>
                     )}
                     
+                    
                     {currentApplication.international_intent_url && (
                       <div className="border rounded-lg p-4">
                         <div className="flex items-center gap-2 mb-2">
