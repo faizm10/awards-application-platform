@@ -101,6 +101,7 @@ export default function ReviewerDashboardPage() {
   const [selectedAward, setSelectedAward] = useState("all")
   const [currentApplicationIndex, setCurrentApplicationIndex] = useState(0)
   const [showApplicationModal, setShowApplicationModal] = useState(false)
+  const [showReviewSummaryModal, setShowReviewSummaryModal] = useState(false)
   const [currentReview, setCurrentReview] = useState<ReviewDecision | null>(null)
   const [reviewNotes, setReviewNotes] = useState("")
 
@@ -276,6 +277,72 @@ export default function ReviewerDashboardPage() {
     }
   }
 
+  // Handle quick decision change from summary modal
+  const handleQuickDecisionChange = async (applicationId: string, shortlisted: boolean) => {
+    if (!user) return
+
+    const supabase = createClient()
+
+    try {
+      const existingReview = reviews.find(r => r.application_id === applicationId)
+      
+      if (existingReview) {
+        // Update existing review
+        const { data, error } = await supabase
+          .from('reviews')
+          .update({
+            shortlisted,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', existingReview.id)
+          .select()
+          .single()
+
+        if (error) throw error
+
+        setReviews(prev => prev.map(r => 
+          r.id === existingReview.id ? { ...r, shortlisted } : r
+        ))
+      } else {
+        // Create new review
+        const { data, error } = await supabase
+          .from('reviews')
+          .insert({
+            application_id: applicationId,
+            reviewer_id: user.id,
+            shortlisted,
+            comments: "",
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .select()
+          .single()
+
+        if (error) throw error
+
+        setReviews(prev => [...prev, data])
+      }
+
+      toast.success(
+        shortlisted ? "Application Shortlisted!" : "Application Not Shortlisted",
+        {
+          description: `Decision updated for ${getApplicantName(applicationId)}`,
+          duration: 2000,
+        }
+      )
+    } catch (error) {
+      console.error('Error updating decision:', error)
+      toast.error("Failed to update decision. Please try again.")
+    }
+  }
+
+  // Helper function to get applicant name
+  const getApplicantName = (applicationId: string) => {
+    const application = applications.find(app => app.id === applicationId)
+    if (!application) return "Unknown Applicant"
+    return `${application.first_name || ''} ${application.last_name || ''}`.trim() || "Unknown Applicant"
+  }
+
   // Get current application data
   const currentApplication = filteredApplications[currentApplicationIndex]
   const currentAward = currentApplication ? awards.find(a => a.id === currentApplication.award_id) : null
@@ -368,6 +435,17 @@ export default function ReviewerDashboardPage() {
             <p className="text-xs text-muted-foreground">Not recommended</p>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Review Summary Button */}
+      <div className="mb-6 flex justify-end">
+        <Button 
+          onClick={() => setShowReviewSummaryModal(true)}
+          className="flex items-center gap-2"
+        >
+          <BarChart3 className="h-4 w-4" />
+          View Review Summary
+        </Button>
       </div>
 
       {/* Filters */}
@@ -695,6 +773,102 @@ export default function ReviewerDashboardPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Review Summary Modal */}
+      <Dialog open={showReviewSummaryModal} onOpenChange={setShowReviewSummaryModal}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              Review Summary
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            {/* Summary Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+              <div className="text-center p-4 bg-blue-50 rounded-lg">
+                <div className="text-2xl font-bold text-blue-600">{stats.total}</div>
+                <div className="text-sm text-blue-800">Total</div>
+              </div>
+              <div className="text-center p-4 bg-yellow-50 rounded-lg">
+                <div className="text-2xl font-bold text-yellow-600">{stats.pending}</div>
+                <div className="text-sm text-yellow-800">Pending</div>
+              </div>
+              <div className="text-center p-4 bg-green-50 rounded-lg">
+                <div className="text-2xl font-bold text-green-600">{stats.shortlisted}</div>
+                <div className="text-sm text-green-800">Shortlisted</div>
+              </div>
+              <div className="text-center p-4 bg-red-50 rounded-lg">
+                <div className="text-2xl font-bold text-red-600">{stats.notShortlisted}</div>
+                <div className="text-sm text-red-800">Not Shortlisted</div>
+              </div>
+            </div>
+
+            {/* Applications List */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold">All Applications</h3>
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {filteredApplications.map((application) => {
+                  const award = awards.find(a => a.id === application.award_id)
+                  const review = reviews.find(r => r.application_id === application.id)
+                  const applicantName = getApplicantName(application.id)
+                  
+                  return (
+                    <Card key={application.id} className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-3 mb-2">
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-medium truncate">{applicantName}</h4>
+                              <p className="text-sm text-muted-foreground truncate">
+                                {award?.title || "Unknown Award"}
+                              </p>
+                            </div>
+                            <Badge 
+                              variant="outline" 
+                              className={
+                                !review 
+                                  ? "bg-yellow-50 text-yellow-700 border-yellow-200"
+                                  : review.shortlisted 
+                                    ? "bg-green-50 text-green-700 border-green-200"
+                                    : "bg-red-50 text-red-700 border-red-200"
+                              }
+                            >
+                              {!review ? "Pending" : review.shortlisted ? "Shortlisted" : "Not Shortlisted"}
+                            </Badge>
+                          </div>
+                        </div>
+                        
+                        <div className="flex gap-2 ml-4">
+                          <Button
+                            size="sm"
+                            variant={review?.shortlisted === true ? "default" : "outline"}
+                            onClick={() => handleQuickDecisionChange(application.id, true)}
+                            className="h-8 px-3"
+                          >
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            Shortlist
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant={review?.shortlisted === false ? "destructive" : "outline"}
+                            onClick={() => handleQuickDecisionChange(application.id, false)}
+                            className="h-8 px-3"
+                          >
+                            <XCircle className="h-3 w-3 mr-1" />
+                            Not Shortlist
+                          </Button>
+                        </div>
+                      </div>
+                    </Card>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
