@@ -127,52 +127,34 @@ export default function CreateAwardPage() {
     let defaultPlaceholder = ""
 
     switch (fieldType) {
-      case "essay":
-        defaultConfig = { type: "essay", word_limit: 500 }
-        defaultLabel = "Essay Question"
-        defaultQuestion = "Please provide a detailed response to the following question:"
-        defaultPlaceholder = "Enter your essay response here..."
-        break
-      case "file":
-        defaultConfig = { type: "file" }
-        defaultLabel = "Upload Document"
-        defaultQuestion = "Please upload the required document:"
+      case "certificate":
+        defaultConfig = { type: "file", file_type: "certificate" }
+        defaultLabel = "Certificate Upload"
+        defaultQuestion = "Please upload your certificate or certification document:"
         defaultPlaceholder = ""
         break
-      case "resume":
-        defaultConfig = { type: "file", file_type: "resume" }
-        defaultLabel = "Resume Upload"
-        defaultQuestion = "Please upload your resume:"
+      case "international_intent":
+        defaultConfig = { type: "file", file_type: "international_intent" }
+        defaultLabel = "International Intent Document"
+        defaultQuestion = "Please upload your international intent or study abroad document:"
         defaultPlaceholder = ""
         break
-      case "text":
-        defaultConfig = { type: "text" }
-        defaultLabel = "Text Response"
-        defaultQuestion = "Please provide your response:"
-        defaultPlaceholder = "Enter your response here..."
-        break
-      case "textarea":
+      case "travel_benefit":
         defaultConfig = { type: "textarea" }
-        defaultLabel = "Detailed Response"
-        defaultQuestion = "Please provide a detailed response:"
-        defaultPlaceholder = "Enter your detailed response here..."
+        defaultLabel = "Travel Benefit Description"
+        defaultQuestion = "Please describe the travel benefits and impact of this opportunity:"
+        defaultPlaceholder = "Describe how this travel opportunity will benefit you and your academic/career goals..."
         break
-      case "select":
-        defaultConfig = { type: "select", options: [] }
-        defaultLabel = "Selection"
-        defaultQuestion = "Please select an option:"
-        defaultPlaceholder = ""
+      case "budget":
+        defaultConfig = { type: "textarea" }
+        defaultLabel = "Budget Breakdown"
+        defaultQuestion = "Please provide a detailed budget breakdown for your proposed activities:"
+        defaultPlaceholder = "Break down your expected costs including travel, accommodation, materials, etc..."
         break
-      case "number":
-        defaultConfig = { type: "number" }
-        defaultLabel = "Numeric Value"
-        defaultQuestion = "Please enter a numeric value:"
-        defaultPlaceholder = "Enter a number..."
-        break
-      case "date":
-        defaultConfig = { type: "date" }
-        defaultLabel = "Date"
-        defaultQuestion = "Please select a date:"
+      case "community_letter":
+        defaultConfig = { type: "file", file_type: "community_letter" }
+        defaultLabel = "Community Letter"
+        defaultQuestion = "Please upload your community service or recommendation letter:"
         defaultPlaceholder = ""
         break
       default:
@@ -183,16 +165,27 @@ export default function CreateAwardPage() {
     }
 
     const generateFieldName = (label: string, fieldType?: string) => {
-      // Special handling for resume fields
-      if (fieldType === "resume") {
-        return "resume_url"
+      // Special handling for specific field types to match database schema
+      switch (fieldType) {
+        case "resume":
+          return "resume_url"
+        case "certificate":
+          return "certificate_url"
+        case "international_intent":
+          return "international_intent_url"
+        case "travel_benefit":
+          return "travel_benefit"
+        case "budget":
+          return "budget"
+        case "community_letter":
+          return "community_letter_url"
+        default:
+          return label
+            .toLowerCase()
+            .replace(/[^a-z0-9\s]/g, '') // Remove special characters
+            .replace(/\s+/g, '_') // Replace spaces with underscores
+            .trim()
       }
-      
-      return label
-        .toLowerCase()
-        .replace(/[^a-z0-9\s]/g, '') // Remove special characters
-        .replace(/\s+/g, '_') // Replace spaces with underscores
-        .trim()
     }
 
     const newRequirement: ApplicationRequirement = {
@@ -224,9 +217,19 @@ export default function CreateAwardPage() {
           
           // Auto-generate field_name from label if label is being updated
           if (field === 'label' && value) {
-            // Special handling for resume fields - don't change the field_name
+            // Special handling for specific field types - don't change the field_name
             if (updatedReq.field_config?.file_type === "resume") {
               updatedReq.field_name = "resume_url"
+            } else if (updatedReq.field_config?.file_type === "certificate") {
+              updatedReq.field_name = "certificate_url"
+            } else if (updatedReq.field_config?.file_type === "international_intent") {
+              updatedReq.field_name = "international_intent_url"
+            } else if (updatedReq.field_config?.file_type === "community_letter") {
+              updatedReq.field_name = "community_letter_url"
+            } else if (updatedReq.label === "Travel Benefit Description") {
+              updatedReq.field_name = "travel_benefit"
+            } else if (updatedReq.label === "Budget Breakdown") {
+              updatedReq.field_name = "budget"
             } else {
               const fieldName = value
                 .toLowerCase()
@@ -656,12 +659,12 @@ export default function CreateAwardPage() {
             <Button
               variant="outline"
               className="justify-start h-auto p-4"
-              onClick={() => addRequirement("essay")}
+              onClick={() => addRequirement("certificate")}
             >
               <div className="text-left">
-                <div className="font-medium">Essay Question</div>
+                <div className="font-medium">Certificate Upload</div>
                 <div className="text-sm text-muted-foreground">
-                  Long-form text response with customizable question and word limit
+                  Upload certificate or certification document
                 </div>
               </div>
             </Button>
@@ -669,12 +672,12 @@ export default function CreateAwardPage() {
             <Button
               variant="outline"
               className="justify-start h-auto p-4"
-              onClick={() => addRequirement("file")}
+              onClick={() => addRequirement("international_intent")}
             >
               <div className="text-left">
-                <div className="font-medium">File Upload</div>
+                <div className="font-medium">International Intent Document</div>
                 <div className="text-sm text-muted-foreground">
-                  Document upload (resume, transcript, letter, etc.)
+                  Upload international intent or study abroad document
                 </div>
               </div>
             </Button>
@@ -682,12 +685,12 @@ export default function CreateAwardPage() {
             <Button
               variant="outline"
               className="justify-start h-auto p-4"
-              onClick={() => addRequirement("resume")}
+              onClick={() => addRequirement("travel_benefit")}
             >
               <div className="text-left">
-                <div className="font-medium">Resume Upload</div>
+                <div className="font-medium">Travel Benefit Description</div>
                 <div className="text-sm text-muted-foreground">
-                  Specifically for resume/CV upload with resume-specific validation
+                  Detailed description of travel benefits and impact
                 </div>
               </div>
             </Button>
@@ -695,12 +698,12 @@ export default function CreateAwardPage() {
             <Button
               variant="outline"
               className="justify-start h-auto p-4"
-              onClick={() => addRequirement("textarea")}
+              onClick={() => addRequirement("budget")}
             >
               <div className="text-left">
-                <div className="font-medium">Detailed Response</div>
+                <div className="font-medium">Budget Breakdown</div>
                 <div className="text-sm text-muted-foreground">
-                  Multi-line text area for longer responses
+                  Detailed budget breakdown and cost analysis
                 </div>
               </div>
             </Button>
@@ -708,51 +711,12 @@ export default function CreateAwardPage() {
             <Button
               variant="outline"
               className="justify-start h-auto p-4"
-              onClick={() => addRequirement("text")}
+              onClick={() => addRequirement("community_letter")}
             >
               <div className="text-left">
-                <div className="font-medium">Text Input</div>
+                <div className="font-medium">Community Letter</div>
                 <div className="text-sm text-muted-foreground">
-                  Single-line text input for short responses
-                </div>
-              </div>
-            </Button>
-            
-            <Button
-              variant="outline"
-              className="justify-start h-auto p-4"
-              onClick={() => addRequirement("select")}
-            >
-              <div className="text-left">
-                <div className="font-medium">Dropdown Selection</div>
-                <div className="text-sm text-muted-foreground">
-                  Multiple choice dropdown with custom options
-                </div>
-              </div>
-            </Button>
-            
-            <Button
-              variant="outline"
-              className="justify-start h-auto p-4"
-              onClick={() => addRequirement("number")}
-            >
-              <div className="text-left">
-                <div className="font-medium">Number Input</div>
-                <div className="text-sm text-muted-foreground">
-                  Numeric input for values like GPA, credits, etc.
-                </div>
-              </div>
-            </Button>
-            
-            <Button
-              variant="outline"
-              className="justify-start h-auto p-4"
-              onClick={() => addRequirement("date")}
-            >
-              <div className="text-left">
-                <div className="font-medium">Date Picker</div>
-                <div className="text-sm text-muted-foreground">
-                  Date selection for events, deadlines, etc.
+                  Upload community service or recommendation letter
                 </div>
               </div>
             </Button>
