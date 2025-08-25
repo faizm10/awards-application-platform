@@ -375,11 +375,18 @@ export function transformFormDataToApplication(
         let fieldName: keyof ApplicationFormData;
         
         if (requirement.type === 'file') {
-          // For file types, check if field_name already ends with _url
-          if (requirement.field_name.endsWith('_url')) {
-            fieldName = requirement.field_name as keyof ApplicationFormData;
+          // Special handling for resume fields
+          if (requirement.field_config?.file_type === 'resume' || 
+              requirement.field_name === 'resume_upload' || 
+              requirement.field_name === 'resume') {
+            fieldName = 'resume_url' as keyof ApplicationFormData;
           } else {
-            fieldName = `${requirement.field_name}_url` as keyof ApplicationFormData;
+            // For file types, check if field_name already ends with _url
+            if (requirement.field_name.endsWith('_url')) {
+              fieldName = requirement.field_name as keyof ApplicationFormData;
+            } else {
+              fieldName = `${requirement.field_name}_url` as keyof ApplicationFormData;
+            }
           }
         } else {
           fieldName = requirement.field_name as keyof ApplicationFormData;
@@ -438,9 +445,20 @@ export function extractFormDataFromApplication(
           `${req.field_name}_url` === key
         );
         
-        // Use the original field_name from requirements if found, otherwise use the key
-        const originalFieldName = requirement?.field_name || fieldName;
-        documents[originalFieldName] = value;
+        // Special handling for resume_url
+        if (key === 'resume_url') {
+          const resumeRequirement = requirements?.find(req => 
+            req.field_config?.file_type === 'resume' || 
+            req.field_name === 'resume_upload' || 
+            req.field_name === 'resume'
+          );
+          const originalFieldName = resumeRequirement?.field_name || 'resume_upload';
+          documents[originalFieldName] = value;
+        } else {
+          // Use the original field_name from requirements if found, otherwise use the key
+          const originalFieldName = requirement?.field_name || fieldName;
+          documents[originalFieldName] = value;
+        }
       } else {
         // This is a regular form field
         formData[key] = value;

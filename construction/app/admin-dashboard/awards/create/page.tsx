@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -8,39 +8,101 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { ArrowLeft, Save, Eye } from "lucide-react"
+import { Checkbox } from "@/components/ui/checkbox"
+import { ArrowLeft, Save, Plus, Trash2 } from "lucide-react"
 import Link from "next/link"
-import { FormFieldBuilder } from "@/components/form-field-builder"
-import { createAward, defaultFormFields, type AwardTemplate, type AwardFormField } from "@/lib/admin"
 import { useAuth } from "@/contexts/AuthContext"
 import { toast } from "sonner"
+import { createClient } from "@/supabase/client"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+
+interface ApplicationRequirement {
+  id: string
+  field_name: string
+  label: string
+  type: "text" | "textarea" | "file" | "select" | "number" | "date"
+  required: boolean
+  description?: string
+  question?: string
+  placeholder?: string
+  field_config?: {
+    options?: string[]
+    word_limit?: number
+    file_type?: string
+    validation?: {
+      min?: number
+      max?: number
+      pattern?: string
+    }
+  }
+}
+
+interface AwardFormData {
+  title: string
+  code: string
+  donor: string
+  value: string
+  deadline: string
+  citizenship: string[]
+  description: string
+  eligibility: string
+  category: string
+  is_active: boolean
+  requirements: ApplicationRequirement[]
+}
 
 export default function CreateAwardPage() {
   const router = useRouter()
   const { user } = useAuth()
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showFieldTypeModal, setShowFieldTypeModal] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
 
-  const [formData, setFormData] = useState<Partial<AwardTemplate>>({
+  const [formData, setFormData] = useState<AwardFormData>({
     title: "",
-    description: "",
-    fullDescription: "",
+    code: "",
+    donor: "",
     value: "",
     deadline: "",
-    eligibility: [],
-    faculty: "",
-    awardType: "scholarship",
-    requirements: {
-      documents: ["Resume", "Transcript"],
-    },
-    customFields: [...defaultFormFields],
-    status: "draft",
+    citizenship: [],
+    description: "",
+    eligibility: "",
+    category: "",
+    is_active: true,
+    requirements: [],
   })
 
-  const [eligibilityText, setEligibilityText] = useState("")
-  const [documentsText, setDocumentsText] = useState("Resume\nTranscript")
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [citizenshipText, setCitizenshipText] = useState("")
 
   // Simple admin check
   const isAdmin = user?.email?.includes('admin') || user?.email?.includes('administrator')
+  
+  // Set loading to false once user data is available
+  useEffect(() => {
+    if (user !== undefined) {
+      setIsLoading(false)
+    }
+  }, [user])
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center py-12">
+          <div className="flex items-center gap-2">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+            <span>Loading create award page...</span>
+          </div>
+        </div>
+      </div>
+    )
+  }
   
   if (!user || !isAdmin) {
     return (
@@ -54,63 +116,208 @@ export default function CreateAwardPage() {
     )
   }
 
-  const handleInputChange = (field: keyof AwardTemplate, value: any) => {
+  const handleInputChange = (field: keyof AwardFormData, value: any) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
   }
 
-  const handleRequirementsChange = (field: keyof AwardTemplate["requirements"], value: any) => {
+  const addRequirement = (fieldType?: string) => {
+    let defaultConfig: any = {}
+    let defaultLabel = ""
+    let defaultQuestion = ""
+    let defaultPlaceholder = ""
+
+    switch (fieldType) {
+      case "essay":
+        defaultConfig = { type: "essay", word_limit: 500 }
+        defaultLabel = "Essay Question"
+        defaultQuestion = "Please provide a detailed response to the following question:"
+        defaultPlaceholder = "Enter your essay response here..."
+        break
+      case "file":
+        defaultConfig = { type: "file" }
+        defaultLabel = "Upload Document"
+        defaultQuestion = "Please upload the required document:"
+        defaultPlaceholder = ""
+        break
+      case "resume":
+        defaultConfig = { type: "file", file_type: "resume" }
+        defaultLabel = "Resume Upload"
+        defaultQuestion = "Please upload your resume:"
+        defaultPlaceholder = ""
+        break
+      case "text":
+        defaultConfig = { type: "text" }
+        defaultLabel = "Text Response"
+        defaultQuestion = "Please provide your response:"
+        defaultPlaceholder = "Enter your response here..."
+        break
+      case "textarea":
+        defaultConfig = { type: "textarea" }
+        defaultLabel = "Detailed Response"
+        defaultQuestion = "Please provide a detailed response:"
+        defaultPlaceholder = "Enter your detailed response here..."
+        break
+      case "select":
+        defaultConfig = { type: "select", options: [] }
+        defaultLabel = "Selection"
+        defaultQuestion = "Please select an option:"
+        defaultPlaceholder = ""
+        break
+      case "number":
+        defaultConfig = { type: "number" }
+        defaultLabel = "Numeric Value"
+        defaultQuestion = "Please enter a numeric value:"
+        defaultPlaceholder = "Enter a number..."
+        break
+      case "date":
+        defaultConfig = { type: "date" }
+        defaultLabel = "Date"
+        defaultQuestion = "Please select a date:"
+        defaultPlaceholder = ""
+        break
+      default:
+        defaultConfig = { type: "text" }
+        defaultLabel = "Text Response"
+        defaultQuestion = "Please provide your response:"
+        defaultPlaceholder = "Enter your response here..."
+    }
+
+    const generateFieldName = (label: string, fieldType?: string) => {
+      // Special handling for resume fields
+      if (fieldType === "resume") {
+        return "resume_url"
+      }
+      
+      return label
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, '') // Remove special characters
+        .replace(/\s+/g, '_') // Replace spaces with underscores
+        .trim()
+    }
+
+    const newRequirement: ApplicationRequirement = {
+      id: `req_${Date.now()}`,
+      field_name: generateFieldName(defaultLabel, fieldType) || `field_${Date.now()}`,
+      label: defaultLabel,
+      type: fieldType as any || "text",
+      required: false,
+      description: "",
+      question: defaultQuestion,
+      placeholder: defaultPlaceholder,
+      field_config: defaultConfig,
+    }
+    
     setFormData((prev) => ({
       ...prev,
-      requirements: { ...prev.requirements, [field]: value },
+      requirements: [...prev.requirements, newRequirement],
+    }))
+    
+    setShowFieldTypeModal(false)
+  }
+
+  const updateRequirement = (index: number, field: keyof ApplicationRequirement, value: any) => {
+    setFormData((prev) => ({
+      ...prev,
+      requirements: prev.requirements.map((req, i) => {
+        if (i === index) {
+          const updatedReq = { ...req, [field]: value }
+          
+          // Auto-generate field_name from label if label is being updated
+          if (field === 'label' && value) {
+            // Special handling for resume fields - don't change the field_name
+            if (updatedReq.field_config?.file_type === "resume") {
+              updatedReq.field_name = "resume_url"
+            } else {
+              const fieldName = value
+                .toLowerCase()
+                .replace(/[^a-z0-9\s]/g, '') // Remove special characters
+                .replace(/\s+/g, '_') // Replace spaces with underscores
+                .trim()
+              updatedReq.field_name = fieldName || `field_${Date.now()}`
+            }
+          }
+          
+          return updatedReq
+        }
+        return req
+      }),
     }))
   }
 
-  const handleCustomFieldsChange = (fields: AwardFormField[]) => {
-    setFormData((prev) => ({ ...prev, customFields: fields }))
+  const removeRequirement = (index: number) => {
+    setFormData((prev) => ({
+      ...prev,
+      requirements: prev.requirements.filter((_, i) => i !== index),
+    }))
   }
 
-  const handleSave = async (status: "draft" | "published") => {
-    if (!formData.title || !formData.description || !formData.value || !formData.deadline || !formData.faculty) {
-      toast.error("Please fill in all required fields before saving.")
+  const handleSave = async () => {
+    if (!formData.title || !formData.description || !formData.value || !formData.deadline || !formData.code || !formData.donor) {
+      toast.error("Please fill in all required fields")
       return
     }
 
     setIsSubmitting(true)
+    const supabase = createClient()
 
     try {
+      // Create the award first
       const awardData = {
-        ...formData,
-        eligibility: eligibilityText.split("\n").filter((line) => line.trim()),
-        requirements: {
-          ...formData.requirements,
-          documents: documentsText.split("\n").filter((line) => line.trim()),
-        },
-        status,
-        createdBy: user?.id || "",
-      } as Omit<AwardTemplate, "id" | "createdAt" | "updatedAt">
+        title: formData.title,
+        code: formData.code,
+        donor: formData.donor,
+        value: formData.value,
+        deadline: formData.deadline,
+        citizenship: citizenshipText.split('\n').filter(line => line.trim()),
+        description: formData.description,
+        eligibility: formData.eligibility,
+        category: formData.category,
+        is_active: formData.is_active,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }
 
-      const newAward = createAward(awardData)
+      const { data: award, error: awardError } = await supabase
+        .from('awards')
+        .insert(awardData)
+        .select()
+        .single()
 
-      toast.success(`Award "${newAward.title}" has been ${status === "draft" ? "saved as draft" : "published"}.`)
+      if (awardError) {
+        throw awardError
+      }
 
+      // Create the requirements if any exist
+      if (formData.requirements.length > 0) {
+        const requirementsData = formData.requirements.map(req => ({
+          award_id: award.id,
+          field_name: req.field_name,
+          label: req.label,
+          type: req.type,
+          required: req.required,
+          description: req.description || null,
+          question: req.question || null,
+          field_config: req.field_config || null,
+          created_at: new Date().toISOString(),
+        }))
+
+        const { error: requirementsError } = await supabase
+          .from('award_required_fields')
+          .insert(requirementsData)
+
+        if (requirementsError) {
+          throw requirementsError
+        }
+      }
+
+      toast.success("Award created successfully")
       router.push("/admin-dashboard")
     } catch (error) {
-      toast.error("Failed to save award. Please try again.")
+      console.error('Error creating award:', error)
+      toast.error("Failed to create award")
     } finally {
       setIsSubmitting(false)
     }
-  }
-
-  if (!user || !isAdmin) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <Card>
-          <CardContent className="pt-6 text-center">
-            <p>Access denied. This page is only available to administrators.</p>
-          </CardContent>
-        </Card>
-      </div>
-    )
   }
 
   return (
@@ -120,254 +327,438 @@ export default function CreateAwardPage() {
         <Button variant="ghost" asChild className="mb-4">
           <Link href="/admin-dashboard">
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Dashboard
+            Back to Admin Dashboard
           </Link>
         </Button>
-        <h1 className="text-3xl font-bold mb-2">Create New Award</h1>
-        <p className="text-muted-foreground">Set up a new award with custom application requirements</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold mb-2">Create New Award</h1>
+            <p className="text-muted-foreground">Set up a new award with application requirements</p>
+          </div>
+          <Button onClick={handleSave} disabled={isSubmitting}>
+            <Save className="h-4 w-4 mr-2" />
+            {isSubmitting ? "Creating..." : "Create Award"}
+          </Button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Main Form */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Basic Information */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Basic Information</CardTitle>
-              <CardDescription>Essential details about the award</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="title">Award Title *</Label>
-                <Input
-                  id="title"
-                  value={formData.title}
-                  onChange={(e) => handleInputChange("title", e.target.value)}
-                  placeholder="e.g., Excellence in Engineering Scholarship"
-                />
-              </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Basic Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Basic Information</CardTitle>
+            <CardDescription>Core award details and identification</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="title">Award Title *</Label>
+              <Input
+                id="title"
+                value={formData.title}
+                onChange={(e) => handleInputChange("title", e.target.value)}
+                placeholder="Enter award title"
+              />
+            </div>
 
-              <div>
-                <Label htmlFor="description">Short Description *</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => handleInputChange("description", e.target.value)}
-                  placeholder="Brief description that appears in award listings..."
-                  className="min-h-[80px]"
-                />
-              </div>
+            <div>
+              <Label htmlFor="code">Award Code *</Label>
+              <Input
+                id="code"
+                value={formData.code}
+                onChange={(e) => handleInputChange("code", e.target.value)}
+                placeholder="Enter award code"
+              />
+            </div>
 
-              <div>
-                <Label htmlFor="fullDescription">Full Description *</Label>
-                <Textarea
-                  id="fullDescription"
-                  value={formData.fullDescription}
-                  onChange={(e) => handleInputChange("fullDescription", e.target.value)}
-                  placeholder="Detailed description that appears on the award details page..."
-                  className="min-h-[120px]"
-                />
-              </div>
+            <div>
+              <Label htmlFor="donor">Donor/Sponsor *</Label>
+              <Input
+                id="donor"
+                value={formData.donor}
+                onChange={(e) => handleInputChange("donor", e.target.value)}
+                placeholder="Enter donor or sponsor name"
+              />
+            </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="value">Award Value *</Label>
-                  <Input
-                    id="value"
-                    value={formData.value}
-                    onChange={(e) => handleInputChange("value", e.target.value)}
-                    placeholder="e.g., $5,000"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="deadline">Application Deadline *</Label>
-                  <Input
-                    id="deadline"
-                    type="date"
-                    value={formData.deadline}
-                    onChange={(e) => handleInputChange("deadline", e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="awardType">Award Type</Label>
-                  <Select value={formData.awardType} onValueChange={(value) => handleInputChange("awardType", value)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="scholarship">Scholarship</SelectItem>
-                      <SelectItem value="grant">Grant</SelectItem>
-                      <SelectItem value="bursary">Bursary</SelectItem>
-                      <SelectItem value="prize">Prize</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+            <div>
+              <Label htmlFor="value">Award Value *</Label>
+              <Input
+                id="value"
+                value={formData.value}
+                onChange={(e) => handleInputChange("value", e.target.value)}
+                placeholder="e.g., 1 award of $5,000"
+              />
+            </div>
 
-              <div>
-                <Label htmlFor="faculty">Faculty *</Label>
-                <Select value={formData.faculty} onValueChange={(value) => handleInputChange("faculty", value)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select faculty" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="All Faculties">All Faculties</SelectItem>
-                    <SelectItem value="College of Engineering and Physical Sciences">
-                      College of Engineering and Physical Sciences
-                    </SelectItem>
-                    <SelectItem value="College of Arts">College of Arts</SelectItem>
-                    <SelectItem value="College of Biological Science">College of Biological Science</SelectItem>
-                    <SelectItem value="Ontario Agricultural College">Ontario Agricultural College</SelectItem>
-                    <SelectItem value="College of Business and Economics">College of Business and Economics</SelectItem>
-                    <SelectItem value="College of Social and Applied Human Sciences">
-                      College of Social and Applied Human Sciences
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </CardContent>
-          </Card>
+            <div>
+              <Label htmlFor="category">Category</Label>
+              <Select value={formData.category} onValueChange={(value) => handleInputChange("category", value)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="scholarship">Scholarship</SelectItem>
+                  <SelectItem value="bursary">Bursary</SelectItem>
+                  <SelectItem value="grant">Grant</SelectItem>
+                  <SelectItem value="prize">Prize</SelectItem>
+                  <SelectItem value="award">Award</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
 
-          {/* Requirements */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Eligibility & Requirements</CardTitle>
-              <CardDescription>Define who can apply and what they need to provide</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="eligibility">Eligibility Requirements</Label>
-                <Textarea
-                  id="eligibility"
-                  value={eligibilityText}
-                  onChange={(e) => setEligibilityText(e.target.value)}
-                  placeholder="Enter each requirement on a new line:&#10;Minimum 3.5 GPA&#10;Full-time student status&#10;Engineering program enrollment"
-                  className="min-h-[120px]"
-                />
-                <div className="text-sm text-muted-foreground mt-1">Enter each requirement on a separate line</div>
-              </div>
+        {/* Dates and Status */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Dates and Status</CardTitle>
+            <CardDescription>Application deadlines and award status</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="deadline">Application Deadline *</Label>
+              <Input
+                id="deadline"
+                type="date"
+                value={formData.deadline}
+                onChange={(e) => handleInputChange("deadline", e.target.value)}
+              />
+            </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="minGpa">Minimum GPA</Label>
-                  <Input
-                    id="minGpa"
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max="4.0"
-                    value={formData.requirements?.gpa || ""}
-                    onChange={(e) =>
-                      handleRequirementsChange("gpa", e.target.value ? Number(e.target.value) : undefined)
-                    }
-                    placeholder="3.5"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="maxApplications">Max Applications</Label>
-                  <Input
-                    id="maxApplications"
-                    type="number"
-                    min="1"
-                    value={formData.maxApplications || ""}
-                    onChange={(e) =>
-                      handleInputChange("maxApplications", e.target.value ? Number(e.target.value) : undefined)
-                    }
-                    placeholder="100"
-                  />
-                </div>
-              </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="is_active"
+                checked={formData.is_active}
+                onCheckedChange={(checked) => handleInputChange("is_active", checked)}
+              />
+              <Label htmlFor="is_active">Active Award</Label>
+            </div>
+          </CardContent>
+        </Card>
 
-              <div>
-                <Label htmlFor="documents">Required Documents</Label>
-                <Textarea
-                  id="documents"
-                  value={documentsText}
-                  onChange={(e) => setDocumentsText(e.target.value)}
-                  placeholder="Enter each document on a new line:&#10;Resume&#10;Transcript&#10;Personal Statement&#10;Reference Letter"
-                  className="min-h-[100px]"
-                />
-                <div className="text-sm text-muted-foreground mt-1">
-                  Enter each required document on a separate line
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        {/* Description and Eligibility */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Description and Eligibility</CardTitle>
+            <CardDescription>Detailed award description and eligibility criteria</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="description">Award Description *</Label>
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => handleInputChange("description", e.target.value)}
+                placeholder="Enter detailed award description"
+                rows={4}
+              />
+            </div>
 
-          {/* Custom Form Fields */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Application Form Builder</CardTitle>
-              <CardDescription>Customize the application form fields for this award</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <FormFieldBuilder fields={formData.customFields || []} onChange={handleCustomFieldsChange} />
-            </CardContent>
-          </Card>
-        </div>
+            <div>
+              <Label htmlFor="eligibility">Eligibility Criteria</Label>
+              <Textarea
+                id="eligibility"
+                value={formData.eligibility}
+                onChange={(e) => handleInputChange("eligibility", e.target.value)}
+                placeholder="Enter eligibility requirements"
+                rows={4}
+              />
+            </div>
 
-        {/* Sidebar */}
-        <div className="space-y-6">
-          {/* Actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Button
-                onClick={() => handleSave("draft")}
-                disabled={isSubmitting}
-                variant="outline"
-                className="w-full bg-transparent"
-              >
-                <Save className="h-4 w-4 mr-2" />
-                {isSubmitting ? "Saving..." : "Save as Draft"}
-              </Button>
-              <Button onClick={() => handleSave("published")} disabled={isSubmitting} className="w-full">
-                <Eye className="h-4 w-4 mr-2" />
-                {isSubmitting ? "Publishing..." : "Publish Award"}
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Preview */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Award Preview</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {formData.title && (
-                <div>
-                  <div className="font-semibold">{formData.title}</div>
-                  <div className="text-sm text-muted-foreground">{formData.faculty}</div>
-                </div>
-              )}
-              {formData.value && <div className="text-lg font-semibold text-primary">{formData.value}</div>}
-              {formData.deadline && (
-                <div className="text-sm text-muted-foreground">
-                  Deadline: {new Date(formData.deadline).toLocaleDateString()}
-                </div>
-              )}
-              {formData.description && <div className="text-sm">{formData.description}</div>}
-            </CardContent>
-          </Card>
-
-          {/* Help */}
-          <Card className="bg-muted/50">
-            <CardHeader>
-              <CardTitle className="text-base">Need Help?</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Creating an award for the first time? Check out our guide for best practices.
+            <div>
+              <Label htmlFor="citizenship">Citizenship Requirements</Label>
+              <Textarea
+                id="citizenship"
+                value={citizenshipText}
+                onChange={(e) => setCitizenshipText(e.target.value)}
+                placeholder="Enter citizenship requirements (one per line)"
+                rows={3}
+              />
+              <p className="text-sm text-muted-foreground mt-1">
+                Enter each citizenship requirement on a separate line
               </p>
-              <Button variant="outline" size="sm" className="w-full bg-transparent">
-                View Award Creation Guide
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Application Requirements */}
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Application Requirements</CardTitle>
+            <CardDescription>Define the fields and documents required for this award application</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="flex justify-between items-center">
+              <p className="text-sm text-muted-foreground">
+                Standard fields (First Name, Last Name, Student ID, Email, Major/Program) are automatically included.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowFieldTypeModal(true)}
+                className="flex items-center gap-2"
+              >
+                <Plus className="h-4 w-4" />
+                Add Field
               </Button>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+
+            {formData.requirements.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>No additional fields added yet.</p>
+                <p className="text-sm">Click "Add Field" to create custom application requirements.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {formData.requirements.map((requirement, index) => (
+                  <div key={requirement.id} className="border rounded-lg p-4 space-y-4">
+                    <div className="flex justify-between items-start">
+                      <h4 className="font-medium">Field {index + 1}</h4>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeRequirement(index)}
+                        className="text-destructive hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label>Field Label *</Label>
+                        <Input
+                          value={requirement.label}
+                          onChange={(e) => updateRequirement(index, "label", e.target.value)}
+                          placeholder="e.g., GPA, Personal Statement, Resume"
+                        />
+                      </div>
+                      <div>
+                        <Label>Field Type *</Label>
+                        <Select
+                          value={requirement.type}
+                          onValueChange={(value) => updateRequirement(index, "type", value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="text">Text Input</SelectItem>
+                            <SelectItem value="textarea">Text Area</SelectItem>
+                            <SelectItem value="file">File Upload</SelectItem>
+                            <SelectItem value="select">Dropdown</SelectItem>
+                            <SelectItem value="number">Number</SelectItem>
+                            <SelectItem value="date">Date</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <Label>Field Name (Auto-generated)</Label>
+                        <Input
+                          value={requirement.field_name}
+                          readOnly
+                          className="bg-muted text-muted-foreground"
+                          placeholder="Auto-generated from label"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Field name is automatically generated from the label
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`required_${index}`}
+                          checked={requirement.required}
+                          onCheckedChange={(checked) => updateRequirement(index, "required", checked)}
+                        />
+                        <Label htmlFor={`required_${index}`}>Required Field</Label>
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label>Description</Label>
+                      <Input
+                        value={requirement.description || ""}
+                        onChange={(e) => updateRequirement(index, "description", e.target.value)}
+                        placeholder="Brief description of what this field is for"
+                      />
+                    </div>
+
+                    <div>
+                      <Label>Question/Prompt</Label>
+                      <Input
+                        value={requirement.question || ""}
+                        onChange={(e) => updateRequirement(index, "question", e.target.value)}
+                        placeholder="Question or prompt to show to applicants"
+                      />
+                    </div>
+
+                    <div>
+                      <Label>Placeholder Text</Label>
+                      <Input
+                        value={requirement.placeholder || ""}
+                        onChange={(e) => updateRequirement(index, "placeholder", e.target.value)}
+                        placeholder="Placeholder text for the input field"
+                      />
+                    </div>
+
+                    {requirement.type === "select" && (
+                      <div>
+                        <Label>Options (one per line)</Label>
+                        <Textarea
+                          value={requirement.field_config?.options?.join('\n') || ""}
+                          onChange={(e) => updateRequirement(index, "field_config", {
+                            ...requirement.field_config,
+                            options: e.target.value.split('\n').filter(option => option.trim())
+                          })}
+                          placeholder="Option 1&#10;Option 2&#10;Option 3"
+                          rows={3}
+                        />
+                      </div>
+                    )}
+
+                    {(requirement.type === "textarea" || requirement.type === "text") && (
+                      <div>
+                        <Label>Word Limit (optional)</Label>
+                        <Input
+                          type="number"
+                          value={requirement.field_config?.word_limit || ""}
+                          onChange={(e) => updateRequirement(index, "field_config", {
+                            ...requirement.field_config,
+                            word_limit: e.target.value ? parseInt(e.target.value) : undefined
+                          })}
+                          placeholder="e.g., 500"
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Field Type Selection Modal */}
+      <Dialog open={showFieldTypeModal} onOpenChange={setShowFieldTypeModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Add Application Field</DialogTitle>
+            <DialogDescription>
+              Choose the type of field you want to add to the application form.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 gap-3 py-4">
+            <Button
+              variant="outline"
+              className="justify-start h-auto p-4"
+              onClick={() => addRequirement("essay")}
+            >
+              <div className="text-left">
+                <div className="font-medium">Essay Question</div>
+                <div className="text-sm text-muted-foreground">
+                  Long-form text response with customizable question and word limit
+                </div>
+              </div>
+            </Button>
+            
+            <Button
+              variant="outline"
+              className="justify-start h-auto p-4"
+              onClick={() => addRequirement("file")}
+            >
+              <div className="text-left">
+                <div className="font-medium">File Upload</div>
+                <div className="text-sm text-muted-foreground">
+                  Document upload (resume, transcript, letter, etc.)
+                </div>
+              </div>
+            </Button>
+            
+            <Button
+              variant="outline"
+              className="justify-start h-auto p-4"
+              onClick={() => addRequirement("resume")}
+            >
+              <div className="text-left">
+                <div className="font-medium">Resume Upload</div>
+                <div className="text-sm text-muted-foreground">
+                  Specifically for resume/CV upload with resume-specific validation
+                </div>
+              </div>
+            </Button>
+            
+            <Button
+              variant="outline"
+              className="justify-start h-auto p-4"
+              onClick={() => addRequirement("textarea")}
+            >
+              <div className="text-left">
+                <div className="font-medium">Detailed Response</div>
+                <div className="text-sm text-muted-foreground">
+                  Multi-line text area for longer responses
+                </div>
+              </div>
+            </Button>
+            
+            <Button
+              variant="outline"
+              className="justify-start h-auto p-4"
+              onClick={() => addRequirement("text")}
+            >
+              <div className="text-left">
+                <div className="font-medium">Text Input</div>
+                <div className="text-sm text-muted-foreground">
+                  Single-line text input for short responses
+                </div>
+              </div>
+            </Button>
+            
+            <Button
+              variant="outline"
+              className="justify-start h-auto p-4"
+              onClick={() => addRequirement("select")}
+            >
+              <div className="text-left">
+                <div className="font-medium">Dropdown Selection</div>
+                <div className="text-sm text-muted-foreground">
+                  Multiple choice dropdown with custom options
+                </div>
+              </div>
+            </Button>
+            
+            <Button
+              variant="outline"
+              className="justify-start h-auto p-4"
+              onClick={() => addRequirement("number")}
+            >
+              <div className="text-left">
+                <div className="font-medium">Number Input</div>
+                <div className="text-sm text-muted-foreground">
+                  Numeric input for values like GPA, credits, etc.
+                </div>
+              </div>
+            </Button>
+            
+            <Button
+              variant="outline"
+              className="justify-start h-auto p-4"
+              onClick={() => addRequirement("date")}
+            >
+              <div className="text-left">
+                <div className="font-medium">Date Picker</div>
+                <div className="text-sm text-muted-foreground">
+                  Date selection for events, deadlines, etc.
+                </div>
+              </div>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
-}
+} 

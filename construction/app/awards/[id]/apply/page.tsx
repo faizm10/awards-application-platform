@@ -140,8 +140,9 @@ function ApplyPageContent({ params }: ApplyPageProps) {
   const calculateProgress = useCallback(() => {
     if (!requirements || requirements.length === 0) return 100;
 
-    const requiredFields = requirements.filter((req) => req.required);
-    const filledFields = requiredFields.filter((req) => {
+    // Count all fields (both required and optional)
+    const allFields = requirements;
+    const filledFields = allFields.filter((req) => {
       if (req.type === "file") {
         return documents[req.field_name];
       } else if (req.field_config?.type === "essay") {
@@ -156,7 +157,7 @@ function ApplyPageContent({ params }: ApplyPageProps) {
       }
     });
 
-    return Math.round((filledFields.length / requiredFields.length) * 100);
+    return Math.round((filledFields.length / allFields.length) * 100);
   }, [requirements, documents, essayResponses, formData]);
 
   const isFormValid = useCallback(() => {
@@ -490,6 +491,24 @@ function ApplyPageContent({ params }: ApplyPageProps) {
                     <span>{progress}%</span>
                   </div>
                   <Progress value={progress} className="h-2" />
+                  <div className="text-xs text-muted-foreground mt-1">
+                    {requirements && requirements.length > 0 ? (
+                      <>
+                        {requirements.filter(req => {
+                          if (req.type === "file") {
+                            return documents[req.field_name];
+                          } else if (req.field_config?.type === "essay") {
+                            const essayKey = `essay_response_${req.id}`;
+                            return essayResponses[essayKey] && essayResponses[essayKey].trim() !== "";
+                          } else {
+                            return formData[req.field_name] && formData[req.field_name].trim() !== "";
+                          }
+                        }).length} of {requirements.length} fields completed
+                      </>
+                    ) : (
+                      "No additional fields required"
+                    )}
+                  </div>
                 </div>
                 {existingApplication?.status === "draft" && (
                   <Badge

@@ -18,7 +18,7 @@ export default function AwardsPage() {
   const [searchTerm, setSearchTerm] = useState("")
   const [selectedCategory, setSelectedCategory] = useState("all")
   const [selectedStatus, setSelectedStatus] = useState("all")
-  const [sortBy, setSortBy] = useState<"deadline" | "value" | "title" | "created_at">("deadline")
+  const [sortBy, setSortBy] = useState<"deadline" | "value" | "title" | "created_at">("title")
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
 
   // Prepare filters for the hook

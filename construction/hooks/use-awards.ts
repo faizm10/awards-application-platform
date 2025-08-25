@@ -74,8 +74,8 @@ export function useAwards(filters?: AwardFilters, sort?: AwardSort) {
       if (sort) {
         query = query.order(sort.field, { ascending: sort.direction === "asc" });
       } else {
-        // Default sorting by deadline ascending
-        query = query.order("deadline", { ascending: true });
+        // Default sorting by title ascending (alphabetical)
+        query = query.order("title", { ascending: true });
       }
 
       const { data, error: fetchError } = await query;
