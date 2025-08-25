@@ -1,32 +1,91 @@
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+"use client";
+import { useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Award, Mail, CheckCircle } from "lucide-react";
+import { Suspense } from "react";
 
-export default function Page() {
+function SignUpSuccessContent() {
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("redirect");
+
   return (
-    <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
-      <div className="w-full max-w-sm">
-        <div className="flex flex-col gap-6">
+    <div className="flex min-h-screen w-full items-center justify-center p-6 md:p-10 bg-background">
+      <div className="w-full max-w-md">
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center space-y-6">
+              <div className="flex justify-center">
+                <div className="p-3 rounded-full bg-green-100">
+                  <CheckCircle className="h-8 w-8 text-green-600" />
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <h1 className="text-2xl font-bold tracking-tight">Account created successfully!</h1>
+                <p className="text-muted-foreground">
+                  We've sent a verification email to your inbox. Please check your email and click the verification link to complete your registration.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-center gap-2 p-4 bg-blue-50 rounded-lg">
+                <Mail className="h-5 w-5 text-blue-600" />
+                <span className="text-sm text-blue-800">
+                  Check your email for the verification link
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                <Button asChild className="w-full">
+                  <Link href="/awards">
+                    Browse Awards
+                  </Link>
+                </Button>
+                
+                <Button variant="outline" asChild className="w-full">
+                  <Link href="/">
+                    Back to Home
+                  </Link>
+                </Button>
+              </div>
+
+              <div className="text-sm text-muted-foreground">
+                Didn't receive the email?{" "}
+                <Link href="/auth/login" className="text-primary hover:underline">
+                  Try signing in
+                </Link>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
+  );
+}
+
+export default function SignUpSuccessPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-screen w-full items-center justify-center p-6 md:p-10 bg-background">
+        <div className="w-full max-w-md">
           <Card>
-            <CardHeader>
-              <CardTitle className="text-2xl">
-                Thank you for signing up!
-              </CardTitle>
-              <CardDescription>Check your email to confirm</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                You&apos;ve successfully signed up. Please check your email to
-                confirm your account before signing in.
-              </p>
+            <CardContent className="pt-6">
+              <div className="text-center space-y-6">
+                <div className="animate-pulse">
+                  <div className="h-8 w-8 bg-gray-200 rounded-full mx-auto"></div>
+                </div>
+                <div className="space-y-2">
+                  <div className="h-6 bg-gray-200 rounded w-3/4 mx-auto"></div>
+                  <div className="h-4 bg-gray-200 rounded w-full"></div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </div>
       </div>
-    </div>
+    }>
+      <SignUpSuccessContent />
+    </Suspense>
   );
 }

@@ -1,27 +1,19 @@
+import type React from "react";
 import type { Metadata } from "next";
-import { Geist } from "next/font/google";
-import { ThemeProvider } from "next-themes";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
 import "./globals.css";
-import { ApolloClient } from "@apollo/client";
-import { Providers } from "./providers";
-import { QueryProvider } from "@/lib/providers";
-import { Toaster } from "@/components/ui/sonner"
-
-const defaultUrl = process.env.VERCEL_URL
-  ? `https://${process.env.VERCEL_URL}`
-  : "http://localhost:3000";
+import { Navigation } from "@/components/navigation";
+import Footer from "@/components/footer";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ScrollToTop } from "@/components/scroll-to-top";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(defaultUrl),
-  title: "Awards Application Platform",
-  description: "A platform for managing awards applications",
+  title: "Student Awards Portal - University of Guelph",
+  description:
+    "University of Guelph Student Awards Portal - Apply for awards, track applications, and manage the awards process.",
+  generator: "v0.app",
 };
-
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  display: "swap",
-  subsets: ["latin"],
-});
 
 export default function RootLayout({
   children,
@@ -29,19 +21,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body className={`${geistSans.className} antialiased`}>
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <Providers>
-            <QueryProvider>{children}</QueryProvider>
-            <Toaster />
-          </Providers>
-        </ThemeProvider>
+    <html lang="en">
+      <head>
+        <style>{`
+html {
+  font-family: ${GeistSans.style.fontFamily};
+  --font-sans: ${GeistSans.variable};
+  --font-mono: ${GeistMono.variable};
+}
+        `}</style>
+      </head>
+      <body>
+        <AuthProvider>
+          <ScrollToTop />
+          <Navigation />
+          <main className="min-h-screen bg-background">{children}</main>
+        </AuthProvider>
       </body>
     </html>
   );
