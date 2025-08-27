@@ -110,7 +110,7 @@ export function Navigation() {
         <div className="flex justify-between h-16">
           <div className="flex items-center space-x-8">
             <Link href={ROUTES.HOME} className="flex items-center space-x-2">
-              <Award className="h-8 w-8 text-primary" />
+              <img src="/logo.png" alt="Logo" width={150} height={150} />
               <span className="font-bold text-xl">Student Awards Portal</span>
             </Link>
             <div className="hidden md:flex items-center space-x-6">
