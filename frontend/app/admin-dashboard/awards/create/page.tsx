@@ -14,6 +14,8 @@ import Link from "next/link"
 import { useAuth } from "@/contexts/AuthContext"
 import { toast } from "sonner"
 import { createClient } from "@/supabase/client"
+import { getUserProfile } from "@/lib/auth"
+import { formatSupabaseError, toDbRequirementType } from "@/lib/supabase-errors"
 import {
   Dialog,
   DialogContent,
@@ -188,11 +190,18 @@ export default function CreateAwardPage() {
       }
     }
 
+    const dbType =
+      defaultConfig.type === "file" ||
+      defaultConfig.type === "textarea" ||
+      defaultConfig.type === "text"
+        ? defaultConfig.type
+        : "text"
+
     const newRequirement: ApplicationRequirement = {
       id: `req_${Date.now()}`,
       field_name: generateFieldName(defaultLabel, fieldType) || `field_${Date.now()}`,
       label: defaultLabel,
-      type: fieldType as any || "text",
+      type: dbType,
       required: false,
       description: "",
       question: defaultQuestion,
@@ -260,11 +269,27 @@ export default function CreateAwardPage() {
       return
     }
 
+    if (!formData.category) {
+      toast.error("Please select an award category")
+      return
+    }
+
     setIsSubmitting(true)
     const supabase = createClient()
 
     try {
-      // Create the award first
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user) {
+        throw new Error("You must be signed in to create an award.")
+      }
+
+      const profile = await getUserProfile(session.user.id)
+      if (profile?.user_type !== "admin") {
+        throw new Error(
+          "Only admin accounts can create awards. Sign in as admin@uoguelph.ca (seed) or set profiles.user_type to admin for your user in Supabase."
+        )
+      }
+
       const awardData = {
         title: formData.title,
         code: formData.code,
@@ -273,11 +298,9 @@ export default function CreateAwardPage() {
         deadline: formData.deadline,
         citizenship: citizenshipText.split('\n').filter(line => line.trim()),
         description: formData.description,
-        eligibility: formData.eligibility,
+        eligibility: formData.eligibility || "",
         category: formData.category,
         is_active: formData.is_active,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
       }
 
       const { data: award, error: awardError } = await supabase
@@ -287,21 +310,23 @@ export default function CreateAwardPage() {
         .single()
 
       if (awardError) {
-        throw awardError
+        throw new Error(`Award: ${formatSupabaseError(awardError)}`)
       }
 
-      // Create the requirements if any exist
+      if (!award) {
+        throw new Error("Award was not created (no row returned). Check RLS policies (run supabase-rls.sql).")
+      }
+
       if (formData.requirements.length > 0) {
         const requirementsData = formData.requirements.map(req => ({
           award_id: award.id,
           field_name: req.field_name,
           label: req.label,
-          type: req.type,
+          type: toDbRequirementType(req.type, req.field_config),
           required: req.required,
           description: req.description || null,
           question: req.question || null,
           field_config: req.field_config || null,
-          created_at: new Date().toISOString(),
         }))
 
         const { error: requirementsError } = await supabase
@@ -309,15 +334,16 @@ export default function CreateAwardPage() {
           .insert(requirementsData)
 
         if (requirementsError) {
-          throw requirementsError
+          throw new Error(`Requirements: ${formatSupabaseError(requirementsError)}`)
         }
       }
 
       toast.success("Award created successfully")
       router.push("/admin-dashboard")
     } catch (error) {
-      console.error('Error creating award:', error)
-      toast.error("Failed to create award")
+      const message = formatSupabaseError(error)
+      console.error('Error creating award:', message, error)
+      toast.error(message || "Failed to create award")
     } finally {
       setIsSubmitting(false)
     }
