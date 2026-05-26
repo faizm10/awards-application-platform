@@ -1,6 +1,6 @@
 -- Run in Supabase SQL Editor top-to-bottom (dependency order).
 -- Requires Supabase Auth (auth.users) to already exist.
--- Then: mock-seed.sql (sample data), supabase-rls.sql (required for the app to read data),
+-- Then: mock-seed.sql (test auth users), supabase-rls.sql (required for the app to read data),
 -- and supabase-storage.sql (file upload buckets + policies).
 
 CREATE TABLE public.profiles (
