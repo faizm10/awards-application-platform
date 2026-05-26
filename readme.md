@@ -50,19 +50,21 @@ Open [http://localhost:3000](http://localhost:3000).
 Run these SQL scripts in the Supabase SQL Editor, in order:
 
 1. `frontend/scripts/supabase.sql` — schema  
-2. `frontend/scripts/mock-seed.sql` — sample users, awards, applications  
+2. `frontend/scripts/mock-seed.sql` — test auth users (login only; no sample awards or applications)  
 3. `frontend/scripts/supabase-rls.sql` — row-level security (required for the app to load data)  
 4. `frontend/scripts/supabase-storage.sql` — file upload buckets and policies  
+
+Create awards and `profiles` rows via the app or Supabase dashboard after seeding auth users.
 
 ## 🔐 Test login details
 
 After running `mock-seed.sql`, you can sign in with these accounts. **Password for all accounts:** `TestPassword123!`
 
-| Role | Email | Notes |
-|------|--------|--------|
-| Admin | `admin@uoguelph.ca` | Manage awards, view admin dashboard |
-| Reviewer | `reviewer@uoguelph.ca` | Review applications (committee: Engineering) |
-| Student | `student1@uoguelph.ca` | Browse awards, submit applications |
-| Student | `student2@uoguelph.ca` | Second sample student account |
+| Intended role | Email |
+|---------------|--------|
+| Admin | `admin@uoguelph.ca` |
+| Reviewer | `reviewer@uoguelph.ca` |
+| Student | `student1@uoguelph.ca` |
+| Student | `student2@uoguelph.ca` |
 
-Use the admin account to create or edit awards. Use a student account to test the application flow and file uploads (requires `supabase-storage.sql`).
+Each user needs a matching row in `public.profiles` (with `user_type`) for role-based features. Add those manually or through your signup flow.
