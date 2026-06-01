@@ -1,4 +1,5 @@
 import { createClient } from "@/supabase/client";
+import { formatSupabaseError } from "@/lib/supabase-errors";
 
 export interface Application {
   id: string;
@@ -37,6 +38,15 @@ export interface Application {
   award?: any; // Award data from join
   student?: any; // Student data from join
 }
+
+/** Included on every award application (stored on applications, not award_required_fields). */
+export const STANDARD_APPLICATION_FIELDS = [
+  { field_name: "first_name", label: "First Name", required: true, inputType: "text" as const },
+  { field_name: "last_name", label: "Last Name", required: true, inputType: "text" as const },
+  { field_name: "student_id_text", label: "Student ID", required: true, inputType: "text" as const },
+  { field_name: "email", label: "Email", required: true, inputType: "email" as const },
+  { field_name: "major_program", label: "Major / Program", required: true, inputType: "text" as const },
+] as const;
 
 export interface ApplicationFormData {
   // Standard fields
@@ -157,6 +167,42 @@ export async function getApplicationById(
   }
 
   return data;
+}
+
+/** All applications for an award (admin list). */
+export async function getApplicationsByAward(
+  awardId: string
+): Promise<{ data: Application[]; error: string | null }> {
+  const supabase = createClient();
+
+  const { data, error } = await supabase
+    .from("applications")
+    .select(`
+      *,
+      award:awards (
+        id,
+        title,
+        code,
+        value,
+        category,
+        description
+      ),
+      student:profiles!applications_student_id_fkey (
+        id,
+        full_name,
+        email
+      )
+    `)
+    .eq("award_id", awardId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    const message = formatSupabaseError(error);
+    console.error("Error fetching applications by award:", message, error);
+    return { data: [], error: message };
+  }
+
+  return { data: data ?? [], error: null };
 }
 
 /**
