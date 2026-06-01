@@ -14,7 +14,7 @@ import Link from "next/link"
 import { useAuth } from "@/contexts/AuthContext"
 import { toast } from "sonner"
 import { createClient } from "@/supabase/client"
-import { getUserProfile } from "@/lib/auth"
+import { ensureUserProfile, getUserProfile, resolveUserRole } from "@/lib/auth"
 import { formatSupabaseError, toDbRequirementType } from "@/lib/supabase-errors"
 import {
   Dialog,
@@ -23,6 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 interface ApplicationRequirement {
   id: string
@@ -61,10 +62,11 @@ interface AwardFormData {
 
 export default function CreateAwardPage() {
   const router = useRouter()
-  const { user } = useAuth()
+  const { user, loading: authLoading, userRole } = useAuth()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showFieldTypeModal, setShowFieldTypeModal] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [formError, setFormError] = useState<string | null>(null)
 
   const [formData, setFormData] = useState<AwardFormData>({
     title: "",
@@ -75,22 +77,20 @@ export default function CreateAwardPage() {
     citizenship: [],
     description: "",
     eligibility: "",
-    category: "",
+    category: "scholarship",
     is_active: true,
     requirements: [],
   })
 
   const [citizenshipText, setCitizenshipText] = useState("")
 
-  // Simple admin check
-  const isAdmin = user?.email?.includes('admin') || user?.email?.includes('administrator')
-  
-  // Set loading to false once user data is available
+  const isAdmin = userRole === "admin"
+
   useEffect(() => {
-    if (user !== undefined) {
+    if (!authLoading) {
       setIsLoading(false)
     }
-  }, [user])
+  }, [authLoading])
 
   // Show loading state
   if (isLoading) {
@@ -264,13 +264,25 @@ export default function CreateAwardPage() {
   }
 
   const handleSave = async () => {
-    if (!formData.title || !formData.description || !formData.value || !formData.deadline || !formData.code || !formData.donor) {
-      toast.error("Please fill in all required fields")
-      return
-    }
+    setFormError(null)
 
-    if (!formData.category) {
-      toast.error("Please select an award category")
+    const missing: string[] = []
+    if (!formData.title.trim()) missing.push("Award title")
+    if (!formData.code.trim()) missing.push("Award code")
+    if (!formData.donor.trim()) missing.push("Donor/sponsor")
+    if (!formData.value.trim()) missing.push("Award value")
+    if (!formData.deadline) missing.push("Application deadline")
+    if (!formData.description.trim()) missing.push("Description")
+    if (!formData.category) missing.push("Category")
+
+    if (missing.length > 0) {
+      const list = missing.map((field) => `• ${field}`).join("\n")
+      const message = `The following fields are missing:\n${list}`
+      setFormError(message)
+      toast.error("The following fields are missing", {
+        description: missing.join(", "),
+        duration: 8000,
+      })
       return
     }
 
@@ -283,10 +295,17 @@ export default function CreateAwardPage() {
         throw new Error("You must be signed in to create an award.")
       }
 
+      await ensureUserProfile(session.user)
       const profile = await getUserProfile(session.user.id)
-      if (profile?.user_type !== "admin") {
+      if (!profile) {
         throw new Error(
-          "Only admin accounts can create awards. Sign in as admin@uoguelph.ca (seed) or set profiles.user_type to admin for your user in Supabase."
+          "No profile found for your account. Run mock-seed.sql in Supabase, or add a row in public.profiles linked to your auth user id."
+        )
+      }
+      if (profile.user_type !== "admin") {
+        const hinted = resolveUserRole(profile, session.user.email)
+        throw new Error(
+          `Your Supabase profile role is "${profile.user_type}" (app guessed "${hinted}" from email). Sign in as admin@uoguelph.ca (TestPassword123!), re-run mock-seed.sql, or set public.profiles.user_type = 'admin' for user id ${profile.id}.`
         )
       }
 
@@ -343,6 +362,7 @@ export default function CreateAwardPage() {
     } catch (error) {
       const message = formatSupabaseError(error)
       console.error('Error creating award:', message, error)
+      setFormError(message || "Failed to create award")
       toast.error(message || "Failed to create award")
     } finally {
       setIsSubmitting(false)
@@ -370,6 +390,13 @@ export default function CreateAwardPage() {
           </Button>
         </div>
       </div>
+
+      {formError && (
+        <Alert variant="destructive" className="mb-6">
+          <AlertTitle>Could not create award</AlertTitle>
+          <AlertDescription>{formError}</AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Basic Information */}
@@ -420,7 +447,7 @@ export default function CreateAwardPage() {
             </div>
 
             <div>
-              <Label htmlFor="category">Category</Label>
+              <Label htmlFor="category">Category *</Label>
               <Select value={formData.category} onValueChange={(value) => handleInputChange("category", value)}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select category" />
