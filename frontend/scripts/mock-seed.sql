@@ -1,8 +1,8 @@
 -- Test auth users for awards-platform (Supabase SQL Editor)
 -- Prerequisite: supabase.sql (schema). Optional: supabase-rls.sql, supabase-storage.sql
 --
--- Seeds auth.users + auth.identities only. Does not insert profiles, awards, or applications.
--- After sign-in, create matching public.profiles rows (or use your app signup flow).
+-- Seeds auth.users, auth.identities, and matching public.profiles (roles).
+-- Does not insert sample awards or applications.
 --
 -- Password for all accounts: TestPassword123!
 --   admin@uoguelph.ca    — intended admin
@@ -205,3 +205,38 @@ VALUES
     now(),
     now()
   );
+
+-- ---------------------------------------------------------------------------
+-- Profiles (required for role checks: admin create award, reviewer dashboard, etc.)
+-- ---------------------------------------------------------------------------
+INSERT INTO public.profiles (id, email, full_name, user_type)
+VALUES
+  (
+    'aaaaaaaa-0001-0001-0001-000000000001',
+    'admin@uoguelph.ca',
+    'Alex Admin',
+    'admin'
+  ),
+  (
+    'aaaaaaaa-0002-0002-0002-000000000002',
+    'reviewer@uoguelph.ca',
+    'Riley Reviewer',
+    'reviewer'
+  ),
+  (
+    'aaaaaaaa-0003-0003-0003-000000000003',
+    'student1@uoguelph.ca',
+    'Sam Student',
+    'student'
+  ),
+  (
+    'aaaaaaaa-0004-0004-0004-000000000004',
+    'student2@uoguelph.ca',
+    'Jordan Lee',
+    'student'
+  )
+ON CONFLICT (id) DO UPDATE SET
+  email = EXCLUDED.email,
+  full_name = EXCLUDED.full_name,
+  user_type = EXCLUDED.user_type,
+  updated_at = now();
