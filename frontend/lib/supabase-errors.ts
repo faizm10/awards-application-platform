@@ -29,17 +29,22 @@ export function formatSupabaseError(error: unknown): string {
 /** DB only allows file | text | textarea on award_required_fields.type */
 export function toDbRequirementType(
   type: string,
-  fieldConfig?: { type?: string } | null
+  fieldConfig?: unknown
 ): "file" | "text" | "textarea" {
   const allowed = ["file", "text", "textarea"] as const;
   if (allowed.includes(type as (typeof allowed)[number])) {
     return type as "file" | "text" | "textarea";
   }
-  if (
-    fieldConfig?.type &&
-    allowed.includes(fieldConfig.type as (typeof allowed)[number])
-  ) {
-    return fieldConfig.type as "file" | "text" | "textarea";
+  const configType =
+    fieldConfig &&
+    typeof fieldConfig === "object" &&
+    fieldConfig !== null &&
+    "type" in fieldConfig &&
+    typeof (fieldConfig as { type?: string }).type === "string"
+      ? (fieldConfig as { type: string }).type
+      : undefined;
+  if (configType && allowed.includes(configType as (typeof allowed)[number])) {
+    return configType as "file" | "text" | "textarea";
   }
   if (
     ["certificate", "international_intent", "community_letter", "resume"].includes(
