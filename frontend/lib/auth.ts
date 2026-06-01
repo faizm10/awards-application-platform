@@ -82,9 +82,12 @@ export async function ensureUserProfile(user: SupabaseUser): Promise<void> {
     user_type,
   });
 
-  if (insertError) {
-    console.error('Failed to create user profile:', formatSupabaseError(insertError));
-  }
+  if (!insertError) return;
+
+  // Sign-in can run ensureUserProfile twice in parallel; the second insert loses the race.
+  if (insertError.code === '23505') return;
+
+  console.error('Failed to create user profile:', formatSupabaseError(insertError));
 }
 
 export async function getUserProfile(userId: string): Promise<UserProfile | null> {
