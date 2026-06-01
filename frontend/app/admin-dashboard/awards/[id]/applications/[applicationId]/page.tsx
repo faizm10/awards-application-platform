@@ -2,7 +2,7 @@
 
 import { useParams } from "next/navigation"
 import { ProtectedRoute } from "@/components/auth/protected-route"
-import { ApplicationDetailContent } from "@/app/my-applications/[id]/page"
+import { ApplicationDetailContent } from "@/components/application-detail-content"
 import { useAuth } from "@/contexts/AuthContext"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
