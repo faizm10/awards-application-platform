@@ -6,6 +6,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { createClient } from '@/supabase/client';
@@ -39,18 +40,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [profileLoading, setProfileLoading] = useState(false);
   const supabase = useMemo(() => createClient(), []);
+  const profileSyncInFlight = useRef<Map<string, Promise<void>>>(new Map());
 
   const syncProfile = useCallback(async (authUser: User) => {
-    setProfileLoading(true);
+    const userId = authUser.id;
+    const pending = profileSyncInFlight.current.get(userId);
+    if (pending) {
+      await pending;
+      return;
+    }
+
+    const work = (async () => {
+      setProfileLoading(true);
+      try {
+        await ensureUserProfile(authUser);
+        const loaded = await getUserProfile(authUser.id);
+        setProfile(loaded);
+      } catch (err) {
+        console.error('Profile sync failed:', err);
+        setProfile(null);
+      } finally {
+        setProfileLoading(false);
+      }
+    })();
+
+    profileSyncInFlight.current.set(userId, work);
     try {
-      await ensureUserProfile(authUser);
-      const loaded = await getUserProfile(authUser.id);
-      setProfile(loaded);
-    } catch (err) {
-      console.error('Profile sync failed:', err);
-      setProfile(null);
+      await work;
     } finally {
-      setProfileLoading(false);
+      if (profileSyncInFlight.current.get(userId) === work) {
+        profileSyncInFlight.current.delete(userId);
+      }
     }
   }, []);
 
