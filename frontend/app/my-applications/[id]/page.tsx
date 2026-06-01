@@ -19,9 +19,21 @@ interface ApplicationDetailPageProps {
   params: Promise<{ id: string }>
 }
 
-function ApplicationDetailContent({ params }: ApplicationDetailPageProps) {
+export type ApplicationDetailAdminContext = {
+  awardId: string
+}
+
+export function ApplicationDetailContent({
+  params,
+  adminContext,
+}: ApplicationDetailPageProps & { adminContext?: ApplicationDetailAdminContext }) {
   const router = useRouter()
-  const { user } = useAuth()
+  const { user, userRole } = useAuth()
+  const isAdminView = Boolean(adminContext) && userRole === "admin"
+  const backHref = adminContext
+    ? `/admin-dashboard/awards/${adminContext.awardId}/applications`
+    : "/my-applications"
+  const backLabel = isAdminView ? "Back to Applications" : "Back to My Applications"
   const [application, setApplication] = useState<Application | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -56,9 +68,13 @@ function ApplicationDetailContent({ params }: ApplicationDetailPageProps) {
           return
         }
 
-        // Check if the user owns this application
-        if (app.student_id !== user.id) {
+        if (!isAdminView && app.student_id !== user.id) {
           setError("You don't have permission to view this application")
+          return
+        }
+
+        if (isAdminView && adminContext && app.award_id !== adminContext.awardId) {
+          setError("This application does not belong to this award")
           return
         }
 
@@ -72,7 +88,7 @@ function ApplicationDetailContent({ params }: ApplicationDetailPageProps) {
     }
 
     fetchApplication()
-  }, [id, user])
+  }, [id, user, isAdminView, adminContext?.awardId])
 
   // Show loading state
   if (loading) {
@@ -97,11 +113,8 @@ function ApplicationDetailContent({ params }: ApplicationDetailPageProps) {
             <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">Error Loading Application</h3>
             <p className="text-muted-foreground mb-4">{error || "Application not found"}</p>
-            <Button 
-              variant="outline" 
-              onClick={() => router.push("/my-applications")}
-            >
-              Back to My Applications
+            <Button variant="outline" onClick={() => router.push(backHref)}>
+              {backLabel}
             </Button>
           </CardContent>
         </Card>
@@ -118,19 +131,14 @@ function ApplicationDetailContent({ params }: ApplicationDetailPageProps) {
             <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
             <h3 className="text-lg font-semibold mb-2">Award Not Found</h3>
             <p className="text-muted-foreground mb-4">The award for this application could not be found.</p>
-            <Button 
-              variant="outline" 
-              onClick={() => router.push("/my-applications")}
-            >
-              Back to My Applications
+            <Button variant="outline" onClick={() => router.push(backHref)}>
+              {backLabel}
             </Button>
           </CardContent>
         </Card>
       </div>
     )
   }
-
-
 
   // Extract form data for display
   const { formData, documents, essayResponses } = extractFormDataFromApplication(application, requirements)
@@ -165,9 +173,9 @@ function ApplicationDetailContent({ params }: ApplicationDetailPageProps) {
       {/* Back Navigation */}
       <div className="mb-6">
         <Button variant="ghost" asChild className="mb-4">
-          <Link href="/my-applications">
+          <Link href={backHref}>
             <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to My Applications
+            {backLabel}
           </Link>
         </Button>
       </div>
@@ -424,7 +432,7 @@ function ApplicationDetailContent({ params }: ApplicationDetailPageProps) {
           <Card>
             <CardContent className="pt-6">
               <div className="space-y-3">
-                {application.status === "draft" && (
+                {!isAdminView && application.status === "draft" && (
                   <Button className="w-full" asChild>
                     <Link href={`/awards/${application.award_id}/apply`}>Continue Application</Link>
                   </Button>
@@ -432,9 +440,11 @@ function ApplicationDetailContent({ params }: ApplicationDetailPageProps) {
                 <Button variant="outline" className="w-full bg-transparent" asChild>
                   <Link href={`/awards/${application.award_id}`}>View Award Details</Link>
                 </Button>
-                <Button variant="ghost" className="w-full" asChild>
-                  <Link href="/awards">Browse Other Awards</Link>
-                </Button>
+                {!isAdminView && (
+                  <Button variant="ghost" className="w-full" asChild>
+                    <Link href="/awards">Browse Other Awards</Link>
+                  </Button>
+                )}
               </div>
             </CardContent>
           </Card>
