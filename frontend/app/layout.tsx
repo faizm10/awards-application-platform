@@ -7,6 +7,7 @@ import { Navigation } from "@/components/navigation";
 import Footer from "@/components/footer";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ScrollToTop } from "@/components/scroll-to-top";
+import { Toaster } from "@/components/ui/sonner";
 
 export const metadata: Metadata = {
   title: "Student Awards Portal - University of Guelph",
@@ -36,6 +37,7 @@ html {
           <ScrollToTop />
           <Navigation />
           <main className="min-h-screen bg-background">{children}</main>
+          <Toaster richColors closeButton position="top-center" />
         </AuthProvider>
       </body>
     </html>

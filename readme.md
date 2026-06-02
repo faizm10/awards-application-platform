@@ -33,11 +33,38 @@ To run the project locally:
 # 1. Clone the repo
 git clone https://github.com/your-username/student-awards-portal.git
 
-# 2. Go into the project folder
-cd student-awards-portal
+# 2. Go into the frontend app
+cd student-awards-portal/frontend
 
-# 3. Install dependencies
+# 3. Create .env with your Supabase URL and anon key (see Supabase project settings)
+
+# 4. Install dependencies and start the dev server
 npm install
-
-# 4. Start the development server
 npm run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+### Supabase setup (local / dev database)
+
+Run these SQL scripts in the Supabase SQL Editor, in order:
+
+1. `frontend/scripts/supabase.sql` — schema  
+2. `frontend/scripts/mock-seed.sql` — test auth users + profiles (no sample awards or applications)  
+3. `frontend/scripts/supabase-rls.sql` — row-level security (required for the app to load data)  
+4. `frontend/scripts/supabase-storage.sql` — file upload buckets and policies  
+
+Create awards via the admin dashboard after signing in as admin.
+
+## 🔐 Test login details
+
+After running `mock-seed.sql`, you can sign in with these accounts. **Password for all accounts:** `TestPassword123!`
+
+| Role | Email |
+|------|--------|
+| Admin | `admin@uoguelph.ca` |
+| Reviewer | `reviewer@uoguelph.ca` |
+| Student | `student1@uoguelph.ca` |
+| Student | `student2@uoguelph.ca` |
+
+The app also creates a `profiles` row on sign-in if one is missing (defaults to `student`, except the seed emails above).

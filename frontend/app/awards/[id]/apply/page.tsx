@@ -48,6 +48,7 @@ import {
   extractFormDataFromApplication,
   validateApplicationForm,
   getStatusLabel,
+  STANDARD_APPLICATION_FIELDS,
   type Application,
 } from "@/lib/applications";
 import { FileUpload } from "@/components/file-upload";
@@ -61,7 +62,7 @@ interface ApplyPageProps {
 function ApplyPageContent({ params }: ApplyPageProps) {
   const router = useRouter();
   const [id, setId] = useState<string | null>(null);
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   
   // Scroll to top when page loads
   useScrollToTop();
@@ -137,54 +138,83 @@ function ApplyPageContent({ params }: ApplyPageProps) {
     setDocuments((prev) => ({ ...prev, [fieldName]: url }));
   }, []);
 
-  const calculateProgress = useCallback(() => {
-    if (!requirements || requirements.length === 0) return 100;
-
-    // Count all fields (both required and optional)
-    const allFields = requirements;
-    const filledFields = allFields.filter((req) => {
+  const isDynamicFieldFilled = useCallback(
+    (req: NonNullable<typeof requirements>[number]) => {
       if (req.type === "file") {
-        return documents[req.field_name];
-      } else if (req.field_config?.type === "essay") {
+        return Boolean(documents[req.field_name]);
+      }
+      if (req.field_config?.type === "essay") {
         const essayKey = `essay_response_${req.id}`;
-        return (
-          essayResponses[essayKey] && essayResponses[essayKey].trim() !== ""
-        );
-      } else {
-        return (
-          formData[req.field_name] && formData[req.field_name].trim() !== ""
+        return Boolean(
+          essayResponses[essayKey]?.trim()
         );
       }
-    });
+      return Boolean(formData[req.field_name]?.trim());
+    },
+    [documents, essayResponses, formData]
+  );
 
-    return Math.round((filledFields.length / allFields.length) * 100);
-  }, [requirements, documents, essayResponses, formData]);
-
-  const isFormValid = useCallback(() => {
-    if (!requirements || requirements.length === 0) return true;
-
-    const requiredFields = requirements.filter((req) => req.required);
-    return requiredFields.every((req) => {
+  const isDynamicFieldValid = useCallback(
+    (req: NonNullable<typeof requirements>[number]) => {
+      if (!req.required) return true;
       if (req.type === "file") {
-        return documents[req.field_name];
-      } else if (req.field_config?.type === "essay") {
+        return Boolean(documents[req.field_name]);
+      }
+      if (req.field_config?.type === "essay") {
         const essayKey = `essay_response_${req.id}`;
         const response = essayResponses[essayKey];
-        if (!response || response.trim() === "") return false;
-
-        // Check word limit if specified
+        if (!response?.trim()) return false;
         if (req.field_config.word_limit) {
           const wordCount = wordCounts[essayKey] || 0;
           return wordCount <= req.field_config.word_limit;
         }
         return true;
-      } else {
-        return (
-          formData[req.field_name] && formData[req.field_name].trim() !== ""
-        );
       }
-    });
-  }, [requirements, documents, essayResponses, wordCounts, formData]);
+      return Boolean(formData[req.field_name]?.trim());
+    },
+    [documents, essayResponses, wordCounts, formData]
+  );
+
+  const calculateProgress = useCallback(() => {
+    let filled = STANDARD_APPLICATION_FIELDS.filter((field) =>
+      Boolean(formData[field.field_name]?.trim())
+    ).length;
+    let total = STANDARD_APPLICATION_FIELDS.length;
+
+    if (requirements && requirements.length > 0) {
+      total += requirements.length;
+      filled += requirements.filter(isDynamicFieldFilled).length;
+    }
+
+    return Math.round((filled / total) * 100);
+  }, [requirements, formData, isDynamicFieldFilled]);
+
+  const isFormValid = useCallback(() => {
+    const standardOk = STANDARD_APPLICATION_FIELDS.every((field) =>
+      Boolean(formData[field.field_name]?.trim())
+    );
+    if (!standardOk) return false;
+    if (!requirements || requirements.length === 0) return true;
+    return requirements
+      .filter((req) => req.required)
+      .every(isDynamicFieldValid);
+  }, [requirements, formData, isDynamicFieldValid]);
+
+  const getMissingRequiredLabels = useCallback((): string[] => {
+    const missing: string[] = [];
+    for (const field of STANDARD_APPLICATION_FIELDS) {
+      if (!formData[field.field_name]?.trim()) {
+        missing.push(field.label);
+      }
+    }
+    if (!requirements) return missing;
+    for (const req of requirements.filter((r) => r.required)) {
+      if (!isDynamicFieldValid(req)) {
+        missing.push(req.label);
+      }
+    }
+    return missing;
+  }, [formData, requirements, isDynamicFieldValid]);
 
   // Initialize form data when award and requirements are loaded
   useEffect(() => {
@@ -222,6 +252,25 @@ function ApplyPageContent({ params }: ApplyPageProps) {
 
     loadExistingApplication();
   }, [id, user, countWords]);
+
+  // Prefill standard fields for new applications
+  useEffect(() => {
+    if (!user || applicationLoading || existingApplication) return;
+
+    setFormData((prev) => {
+      const updates: Record<string, string> = {};
+      if (!prev.first_name?.trim() && profile?.full_name) {
+        const parts = profile.full_name.trim().split(/\s+/);
+        if (parts[0]) updates.first_name = parts[0];
+        if (parts.length > 1) updates.last_name = parts.slice(1).join(" ");
+      }
+      if (!prev.email?.trim() && user.email) {
+        updates.email = user.email;
+      }
+      if (Object.keys(updates).length === 0) return prev;
+      return { ...prev, ...updates };
+    });
+  }, [user, profile, existingApplication, applicationLoading]);
 
   // Show loading state
   if (awardLoading || requirementsLoading || applicationLoading) {
@@ -342,33 +391,10 @@ function ApplyPageContent({ params }: ApplyPageProps) {
 
   const handleSubmit = async () => {
     if (!isFormValid()) {
-      const missingFields = requirements?.filter((req) => {
-        if (!req.required) return false;
-
-        if (req.type === "file") {
-          return !documents[req.field_name];
-        } else if (req.field_config?.type === "essay") {
-          const essayKey = `essay_response_${req.id}`;
-          const response = essayResponses[essayKey];
-          if (!response || response.trim() === "") return true;
-
-          if (req.field_config.word_limit) {
-            const wordCount = wordCounts[essayKey] || 0;
-            return wordCount > req.field_config.word_limit;
-          }
-          return false;
-        } else {
-          return (
-            !formData[req.field_name] || formData[req.field_name].trim() === ""
-          );
-        }
-      });
-
-      if (missingFields && missingFields.length > 0) {
+      const missingLabels = getMissingRequiredLabels();
+      if (missingLabels.length > 0) {
         toast(
-          `Please complete all required fields: ${missingFields
-            .map((f) => f.label)
-            .join(", ")}`
+          `Please complete all required fields: ${missingLabels.join(", ")}`
         );
       } else {
         toast(
@@ -418,33 +444,10 @@ function ApplyPageContent({ params }: ApplyPageProps) {
 
   const handleSubmitClick = () => {
     if (!isFormValid()) {
-      const missingFields = requirements?.filter((req) => {
-        if (!req.required) return false;
-
-        if (req.type === "file") {
-          return !documents[req.field_name];
-        } else if (req.field_config?.type === "essay") {
-          const essayKey = `essay_response_${req.id}`;
-          const response = essayResponses[essayKey];
-          if (!response || response.trim() === "") return true;
-
-          if (req.field_config.word_limit) {
-            const wordCount = wordCounts[essayKey] || 0;
-            return wordCount > req.field_config.word_limit;
-          }
-          return false;
-        } else {
-          return (
-            !formData[req.field_name] || formData[req.field_name].trim() === ""
-          );
-        }
-      });
-
-      if (missingFields && missingFields.length > 0) {
+      const missingLabels = getMissingRequiredLabels();
+      if (missingLabels.length > 0) {
         toast(
-          `Please complete all required fields: ${missingFields
-            .map((f) => f.label)
-            .join(", ")}`
+          `Please complete all required fields: ${missingLabels.join(", ")}`
         );
       } else {
         toast(
@@ -498,22 +501,13 @@ function ApplyPageContent({ params }: ApplyPageProps) {
                   </div>
                   <Progress value={progress} className="h-2" />
                   <div className="text-xs text-muted-foreground mt-1">
-                    {requirements && requirements.length > 0 ? (
-                      <>
-                        {requirements.filter(req => {
-                          if (req.type === "file") {
-                            return documents[req.field_name];
-                          } else if (req.field_config?.type === "essay") {
-                            const essayKey = `essay_response_${req.id}`;
-                            return essayResponses[essayKey] && essayResponses[essayKey].trim() !== "";
-                          } else {
-                            return formData[req.field_name] && formData[req.field_name].trim() !== "";
-                          }
-                        }).length} of {requirements.length} fields completed
-                      </>
-                    ) : (
-                      "No additional fields required"
-                    )}
+                    {STANDARD_APPLICATION_FIELDS.filter((field) =>
+                      formData[field.field_name]?.trim()
+                    ).length}{" "}
+                    of {STANDARD_APPLICATION_FIELDS.length} student fields
+                    {requirements && requirements.length > 0
+                      ? ` · ${requirements.filter(isDynamicFieldFilled).length} of ${requirements.length} award fields`
+                      : " · no additional award fields"}
                   </div>
                 </div>
                 {existingApplication?.status === "draft" && (
@@ -528,11 +522,42 @@ function ApplyPageContent({ params }: ApplyPageProps) {
             </CardHeader>
           </Card>
 
-          {/* Dynamic Form Fields */}
+          {/* Standard fields (every award) */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Student Information</CardTitle>
+              <CardDescription>
+                Required for every award application.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {STANDARD_APPLICATION_FIELDS.map((field) => (
+                <div key={field.field_name} className="space-y-2">
+                  <Label htmlFor={field.field_name}>
+                    {field.label}
+                    {field.required && (
+                      <span className="text-destructive ml-1">*</span>
+                    )}
+                  </Label>
+                  <Input
+                    id={field.field_name}
+                    type={field.inputType}
+                    placeholder={`Enter your ${field.label.toLowerCase()}...`}
+                    value={formData[field.field_name] || ""}
+                    onChange={(e) =>
+                      handleInputChange(field.field_name, e.target.value)
+                    }
+                  />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          {/* Award-specific fields */}
           {requirements && requirements.length > 0 && (
             <Card>
               <CardHeader>
-                <CardTitle>Application Information</CardTitle>
+                <CardTitle>Additional Requirements</CardTitle>
                 <CardDescription>
                   Please provide all the required information for this award
                   application.
@@ -658,22 +683,6 @@ function ApplyPageContent({ params }: ApplyPageProps) {
                     </div>
                   );
                 })}
-              </CardContent>
-            </Card>
-          )}
-
-          {/* No Requirements Message */}
-          {(!requirements || requirements.length === 0) && (
-            <Card>
-              <CardContent className="text-center py-8">
-                <AlertCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold mb-2">
-                  No Specific Requirements
-                </h3>
-                <p className="text-muted-foreground">
-                  This award doesn't have specific application requirements. You
-                  can proceed with the submission.
-                </p>
               </CardContent>
             </Card>
           )}

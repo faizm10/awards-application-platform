@@ -92,7 +92,7 @@ interface ReviewDecision {
 }
 
 export default function ReviewerDashboardPage() {
-  const { user } = useAuth()
+  const { user, userRole } = useAuth()
   const [applications, setApplications] = useState<Application[]>([])
   const [awards, setAwards] = useState<Award[]>([])
   const [reviews, setReviews] = useState<ReviewDecision[]>([])
@@ -106,7 +106,7 @@ export default function ReviewerDashboardPage() {
   const [reviewNotes, setReviewNotes] = useState("")
 
   // Simple reviewer check
-  const isReviewer = user?.email?.includes('reviewer') || user?.email?.includes('admin')
+  const isReviewer = userRole === "reviewer" || userRole === "admin"
 
   // Fetch data
   useEffect(() => {

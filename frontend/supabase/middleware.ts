@@ -1,7 +1,32 @@
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-const PUBLIC_PATHS = ["/", "/auth/login", "/auth/sign-up", "/auth/sign-up-success", "/awards"];
+/** Paths reachable without a Supabase session. */
+const PUBLIC_PATH_PREFIXES = [
+  "/",
+  "/auth",
+  "/awards",
+  "/login",
+];
+
+const ADMIN_PATH_PREFIX = "/admin-dashboard";
+const REVIEWER_PATH_PREFIX = "/reviewer-dashboard";
+
+function isPublicPath(pathname: string): boolean {
+  if (pathname === "/") return true;
+  return PUBLIC_PATH_PREFIXES.some(
+    (prefix) => prefix !== "/" && pathname.startsWith(prefix)
+  );
+}
+
+function seedRoleFromEmail(
+  email: string | undefined
+): "student" | "reviewer" | "admin" | null {
+  if (!email) return null;
+  if (email === "admin@uoguelph.ca") return "admin";
+  if (email === "reviewer@uoguelph.ca") return "reviewer";
+  return null;
+}
 
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
@@ -16,7 +41,13 @@ export async function updateSession(request: NextRequest) {
         getAll() {
           return request.cookies.getAll();
         },
-        setAll(cookiesToSet) {
+        setAll(
+          cookiesToSet: {
+            name: string;
+            value: string;
+            options?: CookieOptions;
+          }[]
+        ) {
           cookiesToSet.forEach(({ name, value }) =>
             request.cookies.set(name, value)
           );
@@ -31,47 +62,55 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  // Do not run code between createServerClient and
-  // supabase.auth.getUser(). A simple mistake could make it very hard to debug
-  // issues with users being randomly logged out.
-
-  // IMPORTANT: DO NOT REMOVE auth.getUser()
-
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (
-    request.nextUrl.pathname !== "/" &&
-    !user &&
-    !request.nextUrl.pathname.startsWith("/login") &&
-    !request.nextUrl.pathname.startsWith("/auth")
-  ) {
-    // no user, potentially respond by redirecting the user to the login page
-    const isPublicPath = PUBLIC_PATHS.some((path) =>
-      request.nextUrl.pathname.startsWith(path)
-    );
+  const pathname = request.nextUrl.pathname;
 
-    if (!user && !isPublicPath) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/auth/login";
-      url.searchParams.set("redirect", request.nextUrl.pathname);
-      return NextResponse.redirect(url);
-    }
+  if (!user && !isPublicPath(pathname)) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/auth/login";
+    url.searchParams.set("redirect", pathname);
+    return NextResponse.redirect(url);
   }
 
-  // IMPORTANT: You *must* return the supabaseResponse object as it is.
-  // If you're creating a new response object with NextResponse.next() make sure to:
-  // 1. Pass the request in it, like so:
-  //    const myNewResponse = NextResponse.next({ request })
-  // 2. Copy over the cookies, like so:
-  //    myNewResponse.cookies.setAll(supabaseResponse.cookies.getAll())
-  // 3. Change the myNewResponse object to fit your needs, but avoid changing
-  //    the cookies!
-  // 4. Finally:
-  //    return myNewResponse
-  // If this is not done, you may be causing the browser and server to go out
-  // of sync and terminate the user's session prematurely!
+  if (user) {
+    let userType: "student" | "reviewer" | "admin" | null = null;
+
+    if (
+      pathname.startsWith(ADMIN_PATH_PREFIX) ||
+      pathname.startsWith(REVIEWER_PATH_PREFIX)
+    ) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("user_type")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      userType =
+        profile?.user_type ?? seedRoleFromEmail(user.email) ?? "student";
+
+      if (
+        pathname.startsWith(ADMIN_PATH_PREFIX) &&
+        userType !== "admin"
+      ) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/awards";
+        return NextResponse.redirect(url);
+      }
+
+      if (
+        pathname.startsWith(REVIEWER_PATH_PREFIX) &&
+        userType !== "reviewer" &&
+        userType !== "admin"
+      ) {
+        const url = request.nextUrl.clone();
+        url.pathname = "/awards";
+        return NextResponse.redirect(url);
+      }
+    }
+  }
 
   return supabaseResponse;
 }

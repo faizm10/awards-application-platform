@@ -16,7 +16,7 @@ import { useAuth } from "@/contexts/AuthContext"
 import { ROUTES, NAVIGATION_ITEMS, ADMIN_NAVIGATION_ITEMS, REVIEWER_NAVIGATION_ITEMS } from "@/constants/routes"
 
 export function Navigation() {
-  const { user, signOut, loading } = useAuth()
+  const { user, signOut, loading, userRole } = useAuth()
   const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   const handleLogout = async () => {
@@ -97,11 +97,10 @@ export function Navigation() {
     )
   }
 
-  // Simple role check - in a real app, this would come from user metadata
-  const isAdmin = user.email?.includes('admin') || user.email?.includes('administrator')
-  const isReviewer = user.email?.includes('reviewer')
-  const userRole = isAdmin ? "admin" : isReviewer ? "reviewer" : "student"
-  const navigationItems = getNavigationItems(userRole)
+  const role = userRole ?? "student"
+  const isAdmin = role === "admin"
+  const isReviewer = role === "reviewer"
+  const navigationItems = getNavigationItems(role)
   const userName = user.email?.split('@')[0] || 'User'
 
   return (
@@ -146,7 +145,7 @@ export function Navigation() {
                   <div className="flex flex-col space-y-1 leading-none">
                     <p className="font-medium">{userName}</p>
                     <p className="w-[200px] truncate text-sm text-muted-foreground">{user.email}</p>
-                    <p className="text-xs text-muted-foreground capitalize">{userRole}</p>
+                    <p className="text-xs text-muted-foreground capitalize">{role}</p>
                   </div>
                 </div>
                 <DropdownMenuSeparator />

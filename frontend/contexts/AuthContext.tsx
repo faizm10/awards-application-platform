@@ -1,12 +1,31 @@
 "use client";
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { createClient } from '@/supabase/client';
+import {
+  ensureUserProfile,
+  getUserProfile,
+  resolveUserRole,
+  type UserProfile,
+  type UserRole,
+} from '@/lib/auth';
+import { formatSupabaseError } from '@/lib/supabase-errors';
 import { User } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
+  profile: UserProfile | null;
+  profileLoading: boolean;
+  userRole: UserRole | null;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: any; data: any }>;
   signOut: () => Promise<void>;
@@ -18,34 +37,101 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const supabase = useMemo(() => createClient(), []);
+  const profileSyncInFlight = useRef<Map<string, Promise<void>>>(new Map());
+
+  const syncProfile = useCallback(async (authUser: User) => {
+    const userId = authUser.id;
+    const pending = profileSyncInFlight.current.get(userId);
+    if (pending) {
+      await pending;
+      return;
+    }
+
+    const work = (async () => {
+      setProfileLoading(true);
+      try {
+        await ensureUserProfile(authUser);
+        const loaded = await getUserProfile(authUser.id);
+        setProfile(loaded);
+      } catch (err) {
+        console.error('Profile sync failed:', err);
+        setProfile(null);
+      } finally {
+        setProfileLoading(false);
+      }
+    })();
+
+    profileSyncInFlight.current.set(userId, work);
+    try {
+      await work;
+    } finally {
+      if (profileSyncInFlight.current.get(userId) === work) {
+        profileSyncInFlight.current.delete(userId);
+      }
+    }
+  }, []);
+
+  const applySession = useCallback(
+    (sessionUser: User | null) => {
+      setUser(sessionUser);
+      setLoading(false);
+      if (sessionUser) {
+        void syncProfile(sessionUser);
+      } else {
+        setProfile(null);
+        setProfileLoading(false);
+      }
+    },
+    [syncProfile]
+  );
 
   useEffect(() => {
-    // Get initial session
+    let cancelled = false;
+
     const getInitialSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
-      setLoading(false);
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) {
+          console.error('getSession failed:', formatSupabaseError(error));
+        }
+        if (!cancelled) {
+          applySession(session?.user ?? null);
+        }
+      } catch (err) {
+        console.error('Auth initialization failed:', err);
+        if (!cancelled) {
+          applySession(null);
+        }
+      }
     };
 
-    getInitialSession();
+    void getInitialSession();
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setUser(session?.user ?? null);
-        setLoading(false);
+      (_event, session) => {
+        if (!cancelled) {
+          applySession(session?.user ?? null);
+        }
       }
     );
 
-    return () => subscription.unsubscribe();
-  }, []);
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
+  }, [supabase, applySession]);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
+    if (!error && data.user) {
+      applySession(data.user);
+    }
     return { error };
   };
 
@@ -58,15 +144,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
     });
 
-    // Insert full name into profile table if user is created
-    if (data?.user && fullName.trim()) {
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .update({ full_name: fullName.trim() })
-        .eq("id", data.user.id);
-      
-      if (profileError) {
-        console.error("Failed to save full name:", profileError);
+    if (data?.user) {
+      applySession(data.user);
+      if (fullName.trim()) {
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .update({ full_name: fullName.trim() })
+          .eq("id", data.user.id);
+
+        if (profileError) {
+          console.error("Failed to save full name:", formatSupabaseError(profileError));
+        }
       }
     }
 
@@ -75,18 +163,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     await supabase.auth.signOut();
-    // Redirect to home page after logout
     window.location.href = '/';
   };
 
   const refreshUser = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    setUser(user);
+    const { data: { user: refreshed } } = await supabase.auth.getUser();
+    applySession(refreshed);
   };
+
+  const userRole = useMemo(
+    () => (user ? resolveUserRole(profile, user.email) : null),
+    [user, profile]
+  );
 
   const value = {
     user,
     loading,
+    profile,
+    profileLoading,
+    userRole,
     signIn,
     signUp,
     signOut,

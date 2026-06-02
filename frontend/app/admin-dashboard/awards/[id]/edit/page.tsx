@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -60,12 +60,22 @@ interface AwardFormData {
   requirements: ApplicationRequirement[]
 }
 
-export default function CreateAwardPage() {
+const UUID_RE =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+function isPersistedFieldId(id: string): boolean {
+  return UUID_RE.test(id)
+}
+
+export default function EditAwardPage() {
   const router = useRouter()
+  const params = useParams()
+  const awardId = typeof params.id === "string" ? params.id : ""
   const { user, loading: authLoading, userRole } = useAuth()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showFieldTypeModal, setShowFieldTypeModal] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
   const [formError, setFormError] = useState<string | null>(null)
 
   const [formData, setFormData] = useState<AwardFormData>({
@@ -87,25 +97,123 @@ export default function CreateAwardPage() {
   const isAdmin = userRole === "admin"
 
   useEffect(() => {
-    if (!authLoading) {
-      setIsLoading(false)
-    }
-  }, [authLoading])
+    if (authLoading || !awardId) return
 
-  // Show loading state
-  if (isLoading) {
+    let cancelled = false
+    const supabase = createClient()
+
+    const loadAward = async () => {
+      setIsLoading(true)
+      setLoadError(null)
+
+      try {
+        const { data: award, error: awardError } = await supabase
+          .from("awards")
+          .select("*")
+          .eq("id", awardId)
+          .single()
+
+        if (awardError) {
+          throw new Error(formatSupabaseError(awardError))
+        }
+        if (!award) {
+          throw new Error("Award not found.")
+        }
+
+        const { data: fields, error: fieldsError } = await supabase
+          .from("award_required_fields")
+          .select("*")
+          .eq("award_id", awardId)
+          .order("created_at", { ascending: true })
+
+        if (fieldsError) {
+          throw new Error(formatSupabaseError(fieldsError))
+        }
+
+        if (cancelled) return
+
+        const deadline =
+          typeof award.deadline === "string"
+            ? award.deadline.slice(0, 10)
+            : ""
+
+        setFormData({
+          title: award.title ?? "",
+          code: award.code ?? "",
+          donor: award.donor ?? "",
+          value: award.value ?? "",
+          deadline,
+          citizenship: Array.isArray(award.citizenship) ? award.citizenship : [],
+          description: award.description ?? "",
+          eligibility: award.eligibility ?? "",
+          category: award.category ?? "scholarship",
+          is_active: award.is_active ?? true,
+          requirements: (fields ?? []).map((field) => ({
+            id: field.id,
+            field_name: field.field_name,
+            label: field.label,
+            type: field.type as ApplicationRequirement["type"],
+            required: field.required ?? false,
+            description: field.description ?? undefined,
+            question: field.question ?? undefined,
+            field_config: (field.field_config as ApplicationRequirement["field_config"]) ?? undefined,
+          })),
+        })
+        setCitizenshipText(
+          Array.isArray(award.citizenship) ? award.citizenship.join("\n") : ""
+        )
+      } catch (err) {
+        if (!cancelled) {
+          setLoadError(formatSupabaseError(err))
+        }
+      } finally {
+        if (!cancelled) {
+          setIsLoading(false)
+        }
+      }
+    }
+
+    void loadAward()
+
+    return () => {
+      cancelled = true
+    }
+  }, [authLoading, awardId])
+
+  if (authLoading || isLoading) {
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="flex items-center justify-center py-12">
           <div className="flex items-center gap-2">
             <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-            <span>Loading create award page...</span>
+            <span>Loading award...</span>
           </div>
         </div>
       </div>
     )
   }
-  
+
+  if (loadError || !awardId) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Button variant="ghost" asChild className="mb-4">
+          <Link href="/admin-dashboard">
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back to Admin Dashboard
+          </Link>
+        </Button>
+        <Card>
+          <CardContent className="pt-6 text-center space-y-4">
+            <p>{loadError ?? "Invalid award id."}</p>
+            <Button asChild variant="outline">
+              <Link href="/admin-dashboard">Return to dashboard</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   if (!user || !isAdmin) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -292,7 +400,7 @@ export default function CreateAwardPage() {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.user) {
-        throw new Error("You must be signed in to create an award.")
+        throw new Error("You must be signed in to update an award.")
       }
 
       await ensureUserProfile(session.user)
@@ -322,23 +430,46 @@ export default function CreateAwardPage() {
         is_active: formData.is_active,
       }
 
-      const { data: award, error: awardError } = await supabase
-        .from('awards')
-        .insert(awardData)
-        .select()
-        .single()
+      const { error: awardError } = await supabase
+        .from("awards")
+        .update(awardData)
+        .eq("id", awardId)
 
       if (awardError) {
         throw new Error(`Award: ${formatSupabaseError(awardError)}`)
       }
 
-      if (!award) {
-        throw new Error("Award was not created (no row returned). Check RLS policies (run supabase-rls.sql).")
+      const keptIds = new Set(
+        formData.requirements.filter((req) => isPersistedFieldId(req.id)).map((req) => req.id)
+      )
+
+      const { data: existingFields, error: listError } = await supabase
+        .from("award_required_fields")
+        .select("id")
+        .eq("award_id", awardId)
+
+      if (listError) {
+        throw new Error(`Requirements: ${formatSupabaseError(listError)}`)
       }
 
-      if (formData.requirements.length > 0) {
-        const requirementsData = formData.requirements.map(req => ({
-          award_id: award.id,
+      const idsToDelete = (existingFields ?? [])
+        .map((row) => row.id)
+        .filter((id) => !keptIds.has(id))
+
+      if (idsToDelete.length > 0) {
+        const { error: deleteError } = await supabase
+          .from("award_required_fields")
+          .delete()
+          .in("id", idsToDelete)
+
+        if (deleteError) {
+          throw new Error(`Requirements: ${formatSupabaseError(deleteError)}`)
+        }
+      }
+
+      for (const req of formData.requirements) {
+        const row = {
+          award_id: awardId,
           field_name: req.field_name,
           label: req.label,
           type: toDbRequirementType(req.type, req.field_config),
@@ -346,24 +477,35 @@ export default function CreateAwardPage() {
           description: req.description || null,
           question: req.question || null,
           field_config: req.field_config || null,
-        }))
+        }
 
-        const { error: requirementsError } = await supabase
-          .from('award_required_fields')
-          .insert(requirementsData)
+        if (isPersistedFieldId(req.id)) {
+          const { error: updateError } = await supabase
+            .from("award_required_fields")
+            .update(row)
+            .eq("id", req.id)
 
-        if (requirementsError) {
-          throw new Error(`Requirements: ${formatSupabaseError(requirementsError)}`)
+          if (updateError) {
+            throw new Error(`Requirements: ${formatSupabaseError(updateError)}`)
+          }
+        } else {
+          const { error: insertError } = await supabase
+            .from("award_required_fields")
+            .insert(row)
+
+          if (insertError) {
+            throw new Error(`Requirements: ${formatSupabaseError(insertError)}`)
+          }
         }
       }
 
-      toast.success("Award created successfully")
+      toast.success("Award updated successfully")
       router.push("/admin-dashboard")
     } catch (error) {
       const message = formatSupabaseError(error)
-      console.error('Error creating award:', message, error)
-      setFormError(message || "Failed to create award")
-      toast.error(message || "Failed to create award")
+      console.error("Error updating award:", message, error)
+      setFormError(message || "Failed to update award")
+      toast.error(message || "Failed to update award")
     } finally {
       setIsSubmitting(false)
     }
@@ -381,19 +523,19 @@ export default function CreateAwardPage() {
         </Button>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold mb-2">Create New Award</h1>
-            <p className="text-muted-foreground">Set up a new award with application requirements</p>
+            <h1 className="text-3xl font-bold mb-2">Edit Award</h1>
+            <p className="text-muted-foreground">Update award details and application requirements</p>
           </div>
           <Button onClick={handleSave} disabled={isSubmitting}>
             <Save className="h-4 w-4 mr-2" />
-            {isSubmitting ? "Creating..." : "Create Award"}
+            {isSubmitting ? "Saving..." : "Save Changes"}
           </Button>
         </div>
       </div>
 
       {formError && (
         <Alert variant="destructive" className="mb-6">
-          <AlertTitle>Could not create award</AlertTitle>
+          <AlertTitle>Could not save award</AlertTitle>
           <AlertDescription>{formError}</AlertDescription>
         </Alert>
       )}
